@@ -1,0 +1,23 @@
+{
+  "name": "azure-devops-quicklink",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HughDev-git/azure-devops-quicklink.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/HughDev-git/azure-devops-quicklink/issues"
+  },
+  "homepage": "https://github.com/HughDev-git/azure-devops-quicklink#readme",
+  "dependencies": {
+    "vss-web-extension-sdk": "^5.141.0"
+  }
+}
