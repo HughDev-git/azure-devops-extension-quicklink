@@ -18,6 +18,12 @@
   },
   "homepage": "https://github.com/HughDev-git/azure-devops-quicklink#readme",
   "dependencies": {
-    "vss-web-extension-sdk": "^5.141.0"
+    "vss-web-extension-sdk": "^5.141.0",
+    "@fluentui/react": "8.67.3",
+    "azure-devops-extension-sdk": "~2.0.11",
+    "azure-devops-ui": "2.167.31",
+    "react": "16.8.1",
+    "react-dom": "16.8.1",
+    "react-scripts": "2.0.3"
   }
 }
