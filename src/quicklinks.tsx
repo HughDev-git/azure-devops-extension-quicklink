@@ -14,13 +14,10 @@ import { ITaskItem, MSStoryData } from "./Data";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
 import { initializeIcons } from "@fluentui/react/lib/";
 
-// import "./List.Example.css";
-
-
+initializeIcons();
 
 interface MyStates {
   StoryRecords: ArrayItemProvider<ITaskItem>;
-  IsRenderReady: boolean;
 }
 
 const commandBarItems: IHeaderCommandBarItem[] = [
@@ -44,99 +41,59 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   constructor(props: {}) {
     super(props);
     this.state = {
-      // eventContent: "",
-      // StoryRecords: new <ArrayItemProvider<ITaskItem<[]>();
-      StoryRecords: null,
-      IsRenderReady: false
+      StoryRecords: new ArrayItemProvider(MSStoryData)
     };
   }
 
-  public componentDidMount() {
-    // SDK.init().then(() => {
-    initializeIcons();
-    this.fetchAllStories().then(() => {
-      this.filterStoriesByTeam();
-    });
-    // });
-  }
-
   public selection = new ListSelection(true);
-  public allStories = new ArrayItemProvider(MSStoryData);
+  public tasks = new ArrayItemProvider(MSStoryData);
 
   public filter = (e) => {
-    const keyword = e.target.value;
-    //   this.setState({
-    //     StoryRecords: this.allStories
-    //  });
-    // alert(keyword)
-    // this.allStories.filter((val) => val..toLowerCase().startsWith(keyword.toLowerCase());
-
-    // if (keyword !== '') {
-    //   const results = tasks.filter((record) => {
-    //     return record.name.toLowerCase().startsWith(keyword.toLowerCase());
-    //     // Use the toLowerCase() method to make it case-insensitive
-    //   });
-    //   setFoundRecords(results);
-    // } else {
-    //   setFoundRecords(USERS);
-    //   // If the text field is empty, show all users
-    // }
-
-    // setName(keyword);
+    const keyword = e.target.value.toLowerCase();
+    if (keyword !== "") {
+      const results = MSStoryData.filter((val) => {
+        return val.name.toLowerCase().match(keyword.toLowerCase());
+        // Use the toLowerCase() method to make it case-insensitive
+      });
+      var a = new ArrayItemProvider(results);
+      this.setState({
+        StoryRecords: a
+      });
+    } else {
+      var b = new ArrayItemProvider(MSStoryData);
+      this.setState({
+        StoryRecords: b
+      });
+      // If the text field is empty, show all users
+    }
   };
 
-  public async fetchAllStories() {
-    // let dataplaceholderstoriesprovider = new ArrayItemProvider(null);
-    let dataplaceholderstories = new Array<ITaskItem>();
-    const stories = await MSStoryData;
-    for (let entry of stories) {
-      dataplaceholderstories.push({
-        name: entry.name,
-        description: entry.description
-      });
-    }
-    let dataplaceholderstoriesprovider = new ArrayItemProvider(
-      dataplaceholderstories
-    );
-    this.setState({
-      StoryRecords: dataplaceholderstoriesprovider
-    });
-  }
-
-  public async filterStoriesByTeam() {
-    this.setState({
-      IsRenderReady: true
-    });
-  }
-
   public render(): JSX.Element {
-    if (this.state.IsRenderReady) {
-      return (
-        <div>
-          <Card
-            className="flex-grow bolt-table-card"
-            titleProps={{ text: "Available Stories", ariaLevel: 9 }}
-            headerCommandBarItems={commandBarItems}
-          >
-            <div className="flex-grow bolt-table-card">
-              <SearchBox
-                placeholder="Search"
-                underlined={true}
-                // onChange={this.filter}
+    return (
+      <div>
+        <Card
+          className="flex-grow bolt-table-card"
+          titleProps={{ text: "Available Stories", ariaLevel: 9 }}
+          headerCommandBarItems={commandBarItems}
+        >
+          <div className="flex-grow bolt-table-card">
+            <SearchBox
+              placeholder="Search"
+              underlined={true}
+              onChange={this.filter}
+            />
+            <div style={{ display: "flex", height: "130px" }}>
+              <ScrollableList
+                itemProvider={this.state.StoryRecords}
+                renderRow={this.renderRow}
+                selection={this.selection}
+                width="100%"
               />
-              <div style={{ display: "flex", height: "130px" }}>
-                <ScrollableList
-                  itemProvider={this.state.StoryRecords}
-                  renderRow={this.renderRow}
-                  selection={this.selection}
-                  width="100%"
-                />
-              </div>
             </div>
-          </Card>
-        </div>
-      );
-    }
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   private renderRow = (

@@ -1,0 +1,20 @@
+{
+    "contributions": [
+        {
+            "id": "outcome-work-item-form-group",
+            "type": "ms.vss-work-web.work-item-form-group",
+            "description": "Custom work item form group",
+            "targets": [
+                "ms.vss-work-web.work-item-form"
+            ],
+            "properties": {
+                "name": "Microsoft Stories",
+                "uri": "index.html",
+                "height": 150
+            }
+        }
+    ],
+    "scopes": [
+        "vso.work"
+    ]
+}
