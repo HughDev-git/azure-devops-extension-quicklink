@@ -7,6 +7,7 @@ import {
 } from "azure-devops-ui/List";
 import { IHeaderCommandBarItem } from "azure-devops-ui/HeaderCommandBar";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
+import { showRootComponent } from "../Common";
 import * as SDK from "azure-devops-extension-sdk";
 // import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { Card } from "azure-devops-ui/Card";
@@ -128,4 +129,4 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
 export default StoryLinkComponent;
 
-// showRootComponent(<StoryLinkComponent />);
+showRootComponent(<StoryLinkComponent />);
