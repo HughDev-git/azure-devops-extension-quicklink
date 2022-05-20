@@ -7,8 +7,8 @@ import {
 } from "azure-devops-ui/List";
 import { IHeaderCommandBarItem } from "azure-devops-ui/HeaderCommandBar";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
-import { showRootComponent } from "../Common";
-import * as SDK from "azure-devops-extension-sdk";
+import { showRootComponent } from "../../Common";
+// import * as SDK from "azure-devops-extension-sdk";
 // import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { Card } from "azure-devops-ui/Card";
 import { ITaskItem, MSStoryData } from "./Data";
@@ -49,7 +49,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   public selection = new ListSelection(true);
   public tasks = new ArrayItemProvider(MSStoryData);
 
-  public filter = (e) => {
+  public filter (e: any) {
     const keyword = e.target.value.toLowerCase();
     if (keyword !== "") {
       const results = MSStoryData.filter((val) => {
