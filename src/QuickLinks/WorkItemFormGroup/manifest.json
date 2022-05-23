@@ -9,7 +9,7 @@
             ],
             "properties": {
                 "name": "Microsoft Stories",
-                "uri": "dist/QuickLinks/index.html",
+                "uri": "dist/WorkItemFormGroup/index.html",
                 "height": 150
             }
         }

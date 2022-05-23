@@ -8,7 +8,7 @@ import {
 import { IHeaderCommandBarItem } from "azure-devops-ui/HeaderCommandBar";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { showRootComponent } from "../../Common";
-// import * as SDK from "azure-devops-extension-sdk";
+import * as SDK from "azure-devops-extension-sdk";
 // import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { Card } from "azure-devops-ui/Card";
 import { ITaskItem, MSStoryData } from "./Data";
