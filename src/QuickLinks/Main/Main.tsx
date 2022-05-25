@@ -14,9 +14,9 @@ import * as SDK from "azure-devops-extension-sdk";
 import { Card } from "azure-devops-ui/Card";
 import { ITaskItem, MSStoryData } from "./Data";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
-import { initializeIcons } from "@fluentui/react/lib";
+// import { initializeIcons } from "@fluentui/react/lib";
 
-initializeIcons();
+// initializeIcons();
 
 interface MyStates {
   StoryRecords: ArrayItemProvider<ITaskItem>;
@@ -25,7 +25,7 @@ interface MyStates {
 const commandBarItems: IHeaderCommandBarItem[] = [
   {
     id: "testCreate",
-    text: "Add",
+    // text: "Add",
     onActivate: () => {
       alert("This would normally trigger a modal popup");
     },
@@ -83,7 +83,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       <div>
         <Card
           className="flex-grow bolt-table-card"
-          titleProps={{ text: "Available Stories", ariaLevel: 9 }}
+          // titleProps={{ text: "Available Stories", ariaLevel: 9 }}
           headerCommandBarItems={commandBarItems}
         >
           <div className="flex-grow bolt-table-card">
