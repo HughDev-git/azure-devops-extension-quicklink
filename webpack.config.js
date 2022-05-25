@@ -16,7 +16,7 @@ fs.readdirSync(samplesDir).filter(dir => {
 module.exports = {
     entry: entries,
     output: {
-        filename: "[name]/[name].js"
+        filename: "[name].js"
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js"],

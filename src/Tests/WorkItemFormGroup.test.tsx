@@ -8,8 +8,8 @@ import {
     waitForElementToBeRemoved
 } from '@testing-library/react';
 import React from 'react';
-import StoryLinkComponent from '../QuickLinks/WorkItemFormGroup/quicklinks'
-import { mockSetFieldValue, spyWorkItemCallBackAccessor } from '../__mocks__/azure-devops-extension-api/'
+import StoryLinkComponent from '../QuickLinks/Main/Main'
+import { mockSetFieldValue, spyWorkItemCallBackAccessor } from '../__mocks__/azure-devops-extension-api'
 
 // AzDO related Mocks are loaded automatically (implementations /src/__mocks__)
 

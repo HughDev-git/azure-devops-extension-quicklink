@@ -5,6 +5,7 @@ import {
   ListSelection,
   ListItem
 } from "azure-devops-ui/List";
+import "./quicklinks.scss"
 import { IHeaderCommandBarItem } from "azure-devops-ui/HeaderCommandBar";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { showRootComponent } from "../../Common";
@@ -13,7 +14,7 @@ import * as SDK from "azure-devops-extension-sdk";
 import { Card } from "azure-devops-ui/Card";
 import { ITaskItem, MSStoryData } from "./Data";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
-import { initializeIcons } from "@fluentui/react/lib/";
+import { initializeIcons } from "@fluentui/react/lib";
 
 initializeIcons();
 
@@ -38,6 +39,8 @@ const commandBarItems: IHeaderCommandBarItem[] = [
   }
 ];
 
+
+
 export class StoryLinkComponent extends React.Component<{}, MyStates> {
   constructor(props: {}) {
     super(props);
@@ -48,6 +51,12 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   public selection = new ListSelection(true);
   public tasks = new ArrayItemProvider(MSStoryData);
+
+  public componentDidMount() {
+    SDK.init().then(() => {
+
+    });
+  }
 
   public filter (e: any) {
     const keyword = e.target.value.toLowerCase();
