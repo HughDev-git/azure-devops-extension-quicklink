@@ -1,4 +1,4 @@
-export interface ITaskItem {
+export interface ITaskItem<T = {}> {
     description: string;
     name: string;
   }
@@ -34,4 +34,3 @@ export interface ITaskItem {
       name: "Azure App Service Deploy"
     }
   ];
-  

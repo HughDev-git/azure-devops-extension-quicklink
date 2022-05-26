@@ -19,7 +19,9 @@ import { SearchBox } from "@fluentui/react/lib/SearchBox";
 // initializeIcons();
 
 interface MyStates {
-  StoryRecords: ArrayItemProvider<ITaskItem>;
+  StoryRecordsArray: Array<ITaskItem<{}>>;
+  StoryRecordsProvider: ArrayItemProvider<ITaskItem>
+  IsRenderReady: boolean;
 }
 
 const commandBarItems: IHeaderCommandBarItem[] = [
@@ -45,17 +47,43 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   constructor(props: {}) {
     super(props);
     this.state = {
-      StoryRecords: new ArrayItemProvider(MSStoryData)
+      StoryRecordsArray: [],
+      IsRenderReady: false,
+      StoryRecordsProvider: new ArrayItemProvider([])
     };
   }
 
   public selection = new ListSelection(true);
-  public tasks = new ArrayItemProvider(MSStoryData);
+  public tasks = this.fetchAllJSONData;
+  // public tasks = new ArrayItemProvider(MSStoryData);
 
   public componentDidMount() {
     SDK.init().then(() => {
-
+      this.fetchAllJSONData().then(() => {
+        this.setArrayProvider();
+        })
     });
+  }
+
+  public async fetchAllJSONData(){
+    let storiesplaceholder = new Array<ITaskItem<{}>>();
+    const Stories = (await MSStoryData);
+    for (let entry of Stories) {
+      storiesplaceholder.push({ "description": entry.description, "name": entry.name})
+    }
+    // let arrayItemProvider = new ArrayItemProvider(storiesplaceholder)
+    for (let entry of storiesplaceholder) {
+      this.state.StoryRecordsArray.push({ "description": entry.description, "name": entry.name})
+    }
+    // return arrayItemProvider
+    // this.setState = {
+    //   StoryRecords: Stories,
+    // };
+  }
+  public setArrayProvider(){
+    this.setState = {
+      StoryRecordsProvider: this.state.StoryRecordsArray,
+    };
   }
 
   public filter (e: any) {
@@ -79,6 +107,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   };
 
   public render(): JSX.Element {
+    if (this.state.IsRenderReady){
     return (
       <div>
         <Card
@@ -94,7 +123,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
             />
             <div style={{ display: "flex", height: "130px" }}>
               <ScrollableList
-                itemProvider={this.state.StoryRecords}
+                itemProvider={this.tasks}
                 renderRow={this.renderRow}
                 selection={this.selection}
                 width="100%"
@@ -104,7 +133,13 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
         </Card>
       </div>
     );
+    }       else {
+      return (<div className="flex-row"></div>)
+
+    }
+    
   }
+
 
   private renderRow = (
     index: number,
