@@ -54,57 +54,75 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   }
 
   public selection = new ListSelection(true);
-  public tasks = this.fetchAllJSONData;
+  // public tasks = this.fetchAllJSONDataPlusState;
   // public tasks = new ArrayItemProvider(MSStoryData);
 
   public componentDidMount() {
     SDK.init().then(() => {
-      this.fetchAllJSONData().then(() => {
-        this.setArrayProvider();
+      this.fetchAllJSONDataPlusState().then(() => {
+      this.buildWidget();
         })
     });
   }
 
-  public async fetchAllJSONData(){
+  public buildWidget() {
+    this.setState({
+      IsRenderReady: true
+    });
+
+  }
+
+  public async fetchAllJSONDataPlusState(){
     let storiesplaceholder = new Array<ITaskItem<{}>>();
     const Stories = (await MSStoryData);
     for (let entry of Stories) {
       storiesplaceholder.push({ "description": entry.description, "name": entry.name})
     }
-    // let arrayItemProvider = new ArrayItemProvider(storiesplaceholder)
+    let arrayItemProvider = new ArrayItemProvider(storiesplaceholder)
     for (let entry of storiesplaceholder) {
       this.state.StoryRecordsArray.push({ "description": entry.description, "name": entry.name})
     }
+
     // return arrayItemProvider
-    // this.setState = {
-    //   StoryRecords: Stories,
-    // };
-  }
-  public setArrayProvider(){
-    this.setState = {
-      StoryRecordsProvider: this.state.StoryRecordsArray,
-    };
+    this.setState({
+      StoryRecordsProvider: arrayItemProvider
+      // StoryRecordsArray: storiesplaceholder
+    });
+
   }
 
-  public filter (e: any) {
-    const keyword = e.target.value.toLowerCase();
-    if (keyword !== "") {
-      const results = MSStoryData.filter((val) => {
-        return val.name.toLowerCase().match(keyword.toLowerCase());
-        // Use the toLowerCase() method to make it case-insensitive
-      });
-      var a = new ArrayItemProvider(results);
-      this.setState({
-        StoryRecords: a
-      });
-    } else {
-      var b = new ArrayItemProvider(MSStoryData);
-      this.setState({
-        StoryRecords: b
-      });
-      // If the text field is empty, show all users
-    }
-  };
+
+  // public setStoryList(){
+  //   this.setState = {
+  //     StoryRecordsProvider: this.state.StoryRecordsArray,
+  //   };
+  // }
+
+  // public async filter (e: any) {
+  //   const keyword = e.target.value.toLowerCase();
+  //   let storiesplaceholder = new Array<ITaskItem<{}>>();
+  //   const Stories = (await MSStoryData);
+  //   for (let entry of Stories) {
+  //     storiesplaceholder.push({ "description": entry.description, "name": entry.name})
+  //   }
+  //   if (keyword !== "") {
+  //     const results = storiesplaceholder.filter((val) => {
+  //       return val.name.toLowerCase().match(keyword.toLowerCase());
+  //       // Use the toLowerCase() method to make it case-insensitive
+  //     });
+  //     let arrayItemProvider = new ArrayItemProvider(storiesplaceholder)
+  //     // var a = new ArrayItemProvider(results);
+  //     this.setState({
+  //       StoryRecordsProvider: arrayItemProvider
+  //     });
+  //   } else {
+  //     // var b = new ArrayItemProvider(MSStoryData);
+  //     // this.setState({
+  //     //   StoryRecordsProvider: this.state.StoryRecordsProvider
+  //     // });
+  //     // If the text field is empty, show all users
+  //   }
+  // };
 
   public render(): JSX.Element {
     if (this.state.IsRenderReady){
@@ -119,11 +137,11 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
             <SearchBox
               placeholder="Search"
               underlined={true}
-              onChange={this.filter}
+              // onChange={this.filter}
             />
             <div style={{ display: "flex", height: "130px" }}>
               <ScrollableList
-                itemProvider={this.tasks}
+                itemProvider={this.state.StoryRecordsProvider}
                 renderRow={this.renderRow}
                 selection={this.selection}
                 width="100%"
