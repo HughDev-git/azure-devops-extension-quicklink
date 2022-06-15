@@ -13,6 +13,7 @@ import * as SDK from "azure-devops-extension-sdk";
 // import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { Card } from "azure-devops-ui/Card";
 import { ITaskItem, MSStoryData } from "./Data";
+import { Queries } from "./StoryData";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
 // import { initializeIcons } from "@fluentui/react/lib";
 
@@ -61,6 +62,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     SDK.init().then(() => {
       this.fetchAllJSONDataPlusState().then(() => {
       this.buildWidget();
+      this.projectQueries();
         })
     });
   }
@@ -71,6 +73,14 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     });
 
   }
+
+  //TEST FUNCTIONS START
+  public async projectQueries() {
+    const queries = (await Queries);
+    return queries
+  }
+
+  //TEST FUNCTIONS END
 
   public async fetchAllJSONDataPlusState(){
     let storiesplaceholder = new Array<ITaskItem<{}>>();
