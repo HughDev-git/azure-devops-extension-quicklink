@@ -13,7 +13,7 @@ import * as SDK from "azure-devops-extension-sdk";
 // import { Icon, IconSize } from "azure-devops-ui/Icon";
 import { Card } from "azure-devops-ui/Card";
 import { ITaskItem, MSStoryData } from "./Data";
-import { Queries } from "./StoryData";
+import { QueryResult } from "./StoryData";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
 // import { initializeIcons } from "@fluentui/react/lib";
 
@@ -25,22 +25,22 @@ interface MyStates {
   IsRenderReady: boolean;
 }
 
-const commandBarItems: IHeaderCommandBarItem[] = [
-  {
-    id: "testCreate",
-    // text: "Add",
-    onActivate: () => {
-      alert("This would normally trigger a modal popup");
-    },
-    iconProps: {
-      iconName: "Add"
-    },
-    isPrimary: true,
-    tooltipProps: {
-      text: "Add activity to the selected story"
-    }
-  }
-];
+// const commandBarItems: IHeaderCommandBarItem[] = [
+//   {
+//     id: "testCreate",
+//     // text: "Add",
+//     onActivate: () => {
+//       alert("This would normally trigger a modal popup");
+//     },
+//     iconProps: {
+//       iconName: "Add"
+//     },
+//     isPrimary: true,
+//     tooltipProps: {
+//       text: "Add activity to the selected story"
+//     }
+//   }
+// ];
 
 
 
@@ -76,7 +76,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   //TEST FUNCTIONS START
   public async projectQueries() {
-    const queries = (await Queries);
+    const queries = (await QueryResult);
     return queries
   }
 
@@ -84,9 +84,10 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   public async fetchAllJSONDataPlusState(){
     let storiesplaceholder = new Array<ITaskItem<{}>>();
-    const Stories = (await MSStoryData);
+    const Stories = (await QueryResult);
     for (let entry of Stories) {
-      storiesplaceholder.push({ "description": entry.description, "name": entry.name})
+      storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
+      // storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
     }
     let arrayItemProvider = new ArrayItemProvider(storiesplaceholder)
     for (let entry of storiesplaceholder) {
@@ -141,7 +142,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
         <Card
           className="flex-grow bolt-table-card"
           // titleProps={{ text: "Available Stories", ariaLevel: 9 }}
-          headerCommandBarItems={commandBarItems}
+          // headerCommandBarItems={commandBarItems}
         >
           <div className="flex-grow bolt-table-card">
             <SearchBox
@@ -149,7 +150,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
               underlined={true}
               // onChange={this.filter}
             />
-            <div style={{ display: "flex", height: "130px" }}>
+            <div style={{ display: "flex", height: "150px" }}>
               <ScrollableList
                 itemProvider={this.state.StoryRecordsProvider}
                 renderRow={this.renderRow}
