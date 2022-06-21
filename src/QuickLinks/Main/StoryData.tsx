@@ -7,7 +7,7 @@ import {
     WorkItemTrackingServiceIds,
   } from "azure-devops-extension-api/WorkItemTracking";
 import { WorkItemTrackingRestClient } from "azure-devops-extension-api/WorkItemTracking/WorkItemTrackingClient";
-import { WorkItemBatchGetRequest } from "azure-devops-extension-api/WorkItemTracking/WorkItemTracking";
+import { WorkItem, WorkItemBatchGetRequest } from "azure-devops-extension-api/WorkItemTracking/WorkItemTracking";
 import * as SDK from "azure-devops-extension-sdk";
 import { ProjectInfo } from "azure-devops-node-api/interfaces/CoreInterfaces";
 // import { IWorkItemTrackingApi } from "azure-devops-node-api/WorkItemTrackingApi";
@@ -47,10 +47,12 @@ async function main(){
   const projectName = "Master Template"
   const query = await RetrieveQuery(projectName)
   const workItemIDs = await executeQuery(query, projectName)
-  const fullWorkItems = await getWorkItemDetails(workItemIDs,projectName)
+  const WorkItems = await getWorkItemDetails(workItemIDs,projectName)
+  // const cleanedWorkItems = await cleanWorkItemsFunction(WorkItems)
+
   // const cleanedWorkItems =
   //const results = finalmethodGetResults(projectName)
-  return fullWorkItems
+  return WorkItems
   //return workItemIDs
 
 }
@@ -72,23 +74,29 @@ async function executeQuery(query: QueryHierarchyItem, projectName: string) {
   return results.workItems
 }
 
-function getWorkItemDetails(items: WorkItemReference[], projectName: string){
+async function getWorkItemDetails(items: WorkItemReference[], projectName: string){
   const client = getClient(WorkItemTrackingRestClient)
-  const a : WorkItemBatchGetRequest = {
+  const bacth : WorkItemBatchGetRequest = {
     $expand: 0,
     asOf: new Date(),
     errorPolicy: 1,
-    fields: ["System.Title"],
+    fields: ["System.Title","System.AreaPath","System.Id"],
     ids: [1,2,4]
   }
   // const batch = new 
   // for (let entry in items){
   //   arrayOfItems.push({"Title": entry.id?})
   // }
-  let workItems = client.getWorkItemsBatch(a, projectName)
+  let workItems = await client.getWorkItemsBatch(bacth, projectName)
   return workItems
 
 }
+
+// function cleanWorkItemsFunction(items: WorkItem[]){
+// for (let item in items) {
+//     item
+//   }
+// }
 
 
 async function RetrieveCurrentProjectInfo(){

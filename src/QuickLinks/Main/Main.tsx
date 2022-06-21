@@ -15,6 +15,7 @@ import { Card } from "azure-devops-ui/Card";
 import { ITaskItem, MSStoryData } from "./Data";
 import { QueryResult } from "./StoryData";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
+import { cleanupDefaultLayerHost } from "@fluentui/react";
 // import { initializeIcons } from "@fluentui/react/lib";
 
 // initializeIcons();
@@ -86,12 +87,14 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     let storiesplaceholder = new Array<ITaskItem<{}>>();
     const Stories = (await QueryResult);
     for (let entry of Stories) {
-      storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
+      // let cleanAreaPath = entry.fields["System.AreaPath"].Split('\\')[1]
+      storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.fields["System.AreaPath"], "id": entry.fields["System.Id"]})
       // storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
     }
     let arrayItemProvider = new ArrayItemProvider(storiesplaceholder)
     for (let entry of storiesplaceholder) {
-      this.state.StoryRecordsArray.push({ "description": entry.description, "name": entry.name})
+      let cleanAreaPath = entry.description.split("\\")[1]
+      this.state.StoryRecordsArray.push({ "description": cleanAreaPath, "name": entry.name, "id": entry.id})
     }
 
     // return arrayItemProvider

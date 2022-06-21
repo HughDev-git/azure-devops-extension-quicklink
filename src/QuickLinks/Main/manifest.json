@@ -8,7 +8,7 @@
                 "ms.vss-work-web.work-item-form"
             ],
             "properties": {
-                "name": "Microsoft Stories",
+                "name": "Microsoft Quicklinks",
                 "uri": "dist/Main/index.html",
                 "height": 250
             }
