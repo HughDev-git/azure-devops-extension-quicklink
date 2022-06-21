@@ -1,7 +1,9 @@
 export interface ITaskItem<T = {}> {
-    description: string;
-    name: string;
-    id: number
+    areapathfull: string;
+    areapathshort: string;
+    title: string;
+    id: number;
+    url: string;
   }
   
   export const MSStoryData: ITaskItem[] = [
