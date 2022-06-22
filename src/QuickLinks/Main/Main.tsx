@@ -25,15 +25,12 @@ import { cleanupDefaultLayerHost } from "@fluentui/react";
 import { Observer } from "azure-devops-ui/Observer";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { IWorkItemFieldChangedArgs, IWorkItemFormService, WorkItemTrackingServiceIds } from "azure-devops-extension-api/WorkItemTracking";
-// import { initializeIcons } from "@fluentui/react/lib";
-
-// initializeIcons();
+import { initializeIcons } from "@fluentui/font-icons-mdl2";
 
 interface MyStates {
   StoryRecordsArray: Array<ITaskItem<{}>>;
   StoryRecordsProvider: ArrayItemProvider<ITaskItem>
   IsRenderReady: boolean;
-  ShowAllStories: boolean;
   IsItemSelected: string;
   ItemSelectedID: number;
   ItemSelectedURL: string
@@ -62,6 +59,7 @@ interface MyStates {
 // ];
 
 
+const showAllCheckbox = new ObservableValue<boolean>(false);
 
 export class StoryLinkComponent extends React.Component<{}, MyStates> {
   constructor(props: {}) {
@@ -70,7 +68,6 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       StoryRecordsArray: [],
       IsRenderReady: false,
       StoryRecordsProvider: new ArrayItemProvider([]),
-      ShowAllStories: false,
       IsItemSelected: "none",
       ItemSelectedID: 0,
       ItemSelectedTitle: "",
@@ -83,6 +80,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   }
 
   public selection = new ListSelection(true);
+
   private selectedItemID = new ObservableValue<number>(0);
   private selectedItemTitle = new ObservableValue<string>("");
   private selectedItemURL = new ObservableValue<string>("");
@@ -93,6 +91,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   public componentDidMount() {
     SDK.init().then(() => {
       this.registerEvents();
+      initializeIcons();
       this.fetchAllJSONDataPlusState().then(() => {
       this.buildWidget();
       this.projectQueries();
@@ -113,18 +112,19 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
         // Called when the active work item is modified
         onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
           let string = args.changedFields["System.AreaPath"] || ""
-          //console.log(string)
+          console.log(string)
           if (string != ""){
-            alert("Area Path Changed!")
+            // alert("Area Path Changed!")
+            this.filterLinks()
           }
           //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
           // args.changedFields
           // if (args.changedFields.key == "System.AreaPath"){
           //   alert("Area Path Changed!")
           // }
-          this.setState({
-            eventContent: "The field changed was - " + string
-          });
+          // this.setState({
+          //   eventContent: "The field changed was - " + string
+          // });
         }
     }
   })
@@ -135,8 +135,19 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     const queries = (await QueryResult);
     return queries
   }
-
   //TEST FUNCTIONS END
+
+  public async filterLinks() {
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    );
+    let areaPath = (await workItemFormService.getFieldValue("System.AreaPath")).toString();
+    let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.areapathfull == areaPath)) 
+    this.setState({
+      StoryRecordsProvider: arrayItemProvider
+      // StoryRecordsArray: storiesplaceholder
+    });
+  }
 
   public OnSelect =  async (event: React.SyntheticEvent<HTMLElement>, listRow: IListRow<ITaskItem<{}>>) => {
     this.selectedItemID.value = listRow.data.id
@@ -183,11 +194,11 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   }
 
   public viewItem(){
-    console.log("URL: "+this.state.ItemSelectedURL)
-    console.log("ID: "+this.state.ItemSelectedID)
-    console.log("Title: "+this.state.ItemSelectedTitle)
-    console.log("AreaPathFull: "+this.state.ItemSelectedAreaPathFull)
-    console.log("AreaPathShort: "+this.state.ItemSelectedAreaPathShort)
+    // console.log("URL: "+this.state.ItemSelectedURL)
+    // console.log("ID: "+this.state.ItemSelectedID)
+    // console.log("Title: "+this.state.ItemSelectedTitle)
+    // console.log("AreaPathFull: "+this.state.ItemSelectedAreaPathFull)
+    // console.log("AreaPathShort: "+this.state.ItemSelectedAreaPathShort)
     window.open(this.state.ItemSelectedURL, '_blank');
   }
 
@@ -198,31 +209,43 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   //   };
   // }
 
-  // public async filter (e: any) {
-  //   const keyword = e.target.value.toLowerCase();
-  //   let storiesplaceholder = new Array<ITaskItem<{}>>();
-  //   const Stories = (await MSStoryData);
-  //   for (let entry of Stories) {
-  //     storiesplaceholder.push({ "description": entry.description, "name": entry.name})
-  //   }
-  //   if (keyword !== "") {
-  //     const results = storiesplaceholder.filter((val) => {
-  //       return val.name.toLowerCase().match(keyword.toLowerCase());
-  //       // Use the toLowerCase() method to make it case-insensitive
-  //     });
-  //     let arrayItemProvider = new ArrayItemProvider(storiesplaceholder)
-  //     // var a = new ArrayItemProvider(results);
-  //     this.setState({
-  //       StoryRecordsProvider: arrayItemProvider
-  //     });
-  //   } else {
-  //     // var b = new ArrayItemProvider(MSStoryData);
-  //     // this.setState({
-  //     //   StoryRecordsProvider: this.state.StoryRecordsProvider
-  //     // });
-  //     // If the text field is empty, show all users
-  //   }
-  // };
+  public async filter (e: any) {
+    const keyword = e.target.value.toLowerCase();
+    if (keyword !== "") {
+      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.title.toLowerCase().match(keyword))) 
+      this.setState({
+        StoryRecordsProvider: arrayItemProvider
+        // StoryRecordsArray: storiesplaceholder
+      });
+    } else {
+      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray) 
+      this.setState({
+        StoryRecordsProvider: arrayItemProvider
+        // StoryRecordsArray: storiesplaceholder
+      });
+    }
+  };
+
+  public async checkedClick(checked: boolean){
+    showAllCheckbox.value = checked
+    if(checked){
+      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray) 
+      this.setState({
+        StoryRecordsProvider: arrayItemProvider
+        // StoryRecordsArray: storiesplaceholder
+      });
+    } else {
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+        WorkItemTrackingServiceIds.WorkItemFormService
+      );
+      let areaPath = (await workItemFormService.getFieldValue("System.AreaPath")).toString();
+      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.areapathfull == areaPath)) 
+      this.setState({
+        StoryRecordsProvider: arrayItemProvider
+        // StoryRecordsArray: storiesplaceholder
+      });
+    }
+  }
 
   public render(): JSX.Element {
     if (this.state.IsRenderReady){
@@ -237,7 +260,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
             <SearchBox
               placeholder="Search"
               underlined={true}
-              // onChange={this.filter}
+              onChange={this.filter.bind(this)}
             />
             <div style={{ display: "flex", height: "150px" }}>
               <ScrollableList
@@ -258,8 +281,8 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
         </Card>
         <div style={{ float: "left", marginTop: "10px" }}>
         <Checkbox
-                //onChange={(event, checked) => (firstCheckbox.value = checked)}
-                checked={this.state.ShowAllStories}
+                onChange={(event, checked) => (this.checkedClick(checked))}
+                checked={showAllCheckbox}
                 label="Show All Items"
             />
         </div>
