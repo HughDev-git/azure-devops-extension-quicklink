@@ -39,7 +39,7 @@ interface MyStates {
   ItemSelectedAreaPathShort: string;
   FormAreaPath: string;
   showAllItemsCheckedState: boolean;
-  FormHasParent: boolean;
+  FormHasParent: string;
 }
 
 // const commandBarItems: IHeaderCommandBarItem[] = [
@@ -78,7 +78,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       ItemSelectedAreaPathShort: "",
       FormAreaPath: "",
       showAllItemsCheckedState: false,
-      FormHasParent: false
+      FormHasParent: ""
     };
   }
 
@@ -103,23 +103,10 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     });
   }
 
-  public async buildWidget() {
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-    WorkItemTrackingServiceIds.WorkItemFormService
-    );
-    let parent = workItemFormService.getFieldValue("System.Parent").toString();
-    if (!parent) {
+  public buildWidget() {
     this.setState({
       IsRenderReady: true,
-      FormHasParent: false
     });
-  } else {
-    this.setState({
-      IsRenderReady: true,
-      FormHasParent: true
-    });
-  }
-
   }
 
   private registerEvents() {
@@ -128,7 +115,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
         // Called when the active work item is modified
         onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
           let string = args.changedFields["System.AreaPath"] || ""
-          console.log(string)
+          //console.log(string)
           if (string != ""){
             // alert("Area Path Changed!")
             this.filterLinks()
@@ -176,7 +163,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       ItemSelectedURLForLinking: listRow.data.urlforlinking
       // StoryRecordsArray: storiesplaceholder
     });
-    console.log(this.state.ItemSelectedURLForLinking);
+    //console.log(this.state.ItemSelectedURLForLinking);
     //alert("Item Selected");
    }
 
@@ -184,12 +171,32 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService
     );
+    //Determine if Parent exists first
+    let relations = await workItemFormService.getWorkItemRelations();
+    for (let item of relations){
+      console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+      if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+        this.setState({
+          FormHasParent: "1"
+        });
+      } else {
+        this.setState({
+          FormHasParent: "0"
+        });
+      }
+      // console.log("Attributes: "+b.attributes+" ||| Link Type: "+b.rel+" ||| URL: "+b.url)
+    }
+    if (!relations.length){
+      this.setState({
+        FormHasParent: "0"
+      });
+    }
     let storiesplaceholder = new Array<ITaskItem<{}>>();
     const thisProject = (await Project);
     const thisHost = (await Host);
     const Stories = (await QueryResult);
     const urlBuilder = "https://dev.azure.com/"+thisHost.name+"/"+thisProject?.name+"/_workitems/edit/";
-    console.log(urlBuilder);
+    //console.log(urlBuilder);
     for (let entry of Stories) {
       let AreaPath = new String(entry.fields["System.AreaPath"])
       let cleanedAreaPath = AreaPath.split("\\")[1]
@@ -200,8 +207,8 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       //let cleanAreaPath = entry.description.split("\\")[1]
       this.state.StoryRecordsArray.push({ "areapathshort": entry.areapathshort, "title": entry.title, "id": entry.id, "url": entry.url, "urlforlinking": entry.urlforlinking, "areapathfull": entry.areapathfull})
     }
-    let areaPath = await (await workItemFormService.getFieldValue("System.AreaPath")).toString();
-    console.log(areaPath)
+    let areaPath = (await workItemFormService.getFieldValue("System.AreaPath")).toString();
+    //console.log(areaPath)
     let arrayItemProvider = new ArrayItemProvider(storiesplaceholder.filter((val) => val.areapathfull == areaPath))
     // return arrayItemProvider
     this.setState({
@@ -222,7 +229,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   public async addLink(){
     this.setState({
-      FormHasParent: true
+      FormHasParent: "1"
       // StoryRecordsArray: storiesplaceholder
     });
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
@@ -237,7 +244,35 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       }
     ]
       workItemFormService.addWorkItemRelations(linkInterfaceItem)
-    this.forceUpdate();
+    // this.forceUpdate();
+  }
+
+  public async removeLink(){
+    console.log(this.state.ItemSelectedURLForLinking);
+    this.setState({
+      FormHasParent: "0"
+      // StoryRecordsArray: storiesplaceholder
+    });
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    );
+    let a = await workItemFormService.getWorkItemRelations();
+    for (let b of a){
+      if(b.rel == "System.LinkTypes.Hierarchy-Reverse"){
+        const removelinkInterfaceItem : WorkItemRelation[] =
+        [
+          {
+          rel: b.rel,
+          url: b.url,
+          attributes: b.attributes
+          }
+        ]
+        workItemFormService.removeWorkItemRelations(removelinkInterfaceItem)
+      }
+    }
+
+      
+    // this.forceUpdate();
   }
 
 
@@ -315,6 +350,8 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     if (this.state.IsRenderReady){
     return (
       <div>
+        {this.state.FormHasParent == "0" ?
+        <div>
         <Card
           className="flex-grow bolt-table-card"
           // titleProps={{ text: "Available Stories", ariaLevel: 9 }}
@@ -343,7 +380,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
           </div>
           
         </Card>
-        <div style={{ float: "left", marginTop: "10px", marginBottom: "10px" }}>
+        <div style={{ float: "left", marginTop: "10px", marginBottom: "20px" }}>
         <Checkbox
                 onChange={(event, checked) => (this.checkedClick(checked))}
                 checked={showAllCheckbox}
@@ -365,34 +402,36 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
         />
         </ButtonGroup>
         </div>
-        {
-            this.state.FormHasParent?
-            <div>
-            <MessageBar
+        <MessageBar
             messageBarType={MessageBarType.warning}
             isMultiline={true}
             dismissButtonAriaLabel="Close"
             >
             Linking is important for reporting purposes! Please ensure you link this work item to one of the selections above.
-            </MessageBar></div> 
-            : <div>
+            </MessageBar>
+        </div>
+        :
+        
             <MessageBar
             messageBarType={MessageBarType.success}
             isMultiline={true}
             dismissButtonAriaLabel="Close"
             actions={
               <div>
-                <MessageBarButton>Remove This Link</MessageBarButton>
+                <MessageBarButton
+                  onClick={this.removeLink.bind(this)}
+                >
+                Remove This Link
+                </MessageBarButton>
               </div>
             }
             >
             You're good to go! This work item is linked to INSERT WORK ITEM HERE.
             </MessageBar>
-            </div>
-        }
-      </div>
-    );
-    }       
+        
+    }
+    
+      </div>);} 
     else {
       return (<div className="flex-row"></div>)
 
