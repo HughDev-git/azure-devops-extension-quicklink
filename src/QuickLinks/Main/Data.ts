@@ -4,6 +4,7 @@ export interface ITaskItem<T = {}> {
     title: string;
     id: number;
     url: string;
+    urlforlinking: string;
   }
   
   export const MSStoryData: ITaskItem[] = [

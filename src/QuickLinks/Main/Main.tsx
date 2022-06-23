@@ -21,11 +21,10 @@ import { QueryResult } from "./StoryData";
 import { Project} from "./CurrentProject";
 import { Host} from "./CurrentHost";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
-import { cleanupDefaultLayerHost } from "@fluentui/react";
 import { Observer } from "azure-devops-ui/Observer";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
-import { IWorkItemFieldChangedArgs, IWorkItemFormService, WorkItemTrackingServiceIds } from "azure-devops-extension-api/WorkItemTracking";
-import { initializeIcons } from "@fluentui/font-icons-mdl2";
+import { IWorkItemFieldChangedArgs, IWorkItemFormService, WorkItemTrackingServiceIds, WorkItemRelation } from "azure-devops-extension-api/WorkItemTracking";
+import { Link, Stack, StackItem, MessageBar, MessageBarType, ChoiceGroup, IStackProps, MessageBarButton, Text, IChoiceGroupStyles, ThemeProvider, initializeIcons } from "@fluentui/react";
 
 interface MyStates {
   StoryRecordsArray: Array<ITaskItem<{}>>;
@@ -33,12 +32,14 @@ interface MyStates {
   IsRenderReady: boolean;
   IsItemSelected: string;
   ItemSelectedID: number;
-  ItemSelectedURL: string
-  ItemSelectedTitle: string
-  ItemSelectedAreaPathFull: string
-  ItemSelectedAreaPathShort: string
-  FormAreaPath: string
-  eventContent: string;
+  ItemSelectedURL: string;
+  ItemSelectedURLForLinking: string
+  ItemSelectedTitle: string;
+  ItemSelectedAreaPathFull: string;
+  ItemSelectedAreaPathShort: string;
+  FormAreaPath: string;
+  showAllItemsCheckedState: boolean;
+  FormHasParent: boolean;
 }
 
 // const commandBarItems: IHeaderCommandBarItem[] = [
@@ -72,10 +73,12 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       ItemSelectedID: 0,
       ItemSelectedTitle: "",
       ItemSelectedURL: "",
+      ItemSelectedURLForLinking: "",
       ItemSelectedAreaPathFull: "",
       ItemSelectedAreaPathShort: "",
       FormAreaPath: "",
-      eventContent: ""
+      showAllItemsCheckedState: false,
+      FormHasParent: false
     };
   }
 
@@ -90,19 +93,32 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   public componentDidMount() {
     SDK.init().then(() => {
-      this.registerEvents();
       initializeIcons();
+      this.registerEvents();
       this.fetchAllJSONDataPlusState().then(() => {
       this.buildWidget();
-      this.projectQueries();
+      // this.forceUpdate();
+      // this.projectQueries();
         })
     });
   }
 
-  public buildWidget() {
+  public async buildWidget() {
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+    WorkItemTrackingServiceIds.WorkItemFormService
+    );
+    let parent = workItemFormService.getFieldValue("System.Parent").toString();
+    if (!parent) {
     this.setState({
-      IsRenderReady: true
+      IsRenderReady: true,
+      FormHasParent: false
     });
+  } else {
+    this.setState({
+      IsRenderReady: true,
+      FormHasParent: true
+    });
+  }
 
   }
 
@@ -131,10 +147,10 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   }
 
   //TEST FUNCTIONS START
-  public async projectQueries() {
-    const queries = (await QueryResult);
-    return queries
-  }
+  // public async projectQueries() {
+  //   const queries = (await QueryResult);
+  //   return queries
+  // }
   //TEST FUNCTIONS END
 
   public async filterLinks() {
@@ -156,9 +172,11 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     this.selectedItemAreaPathFull.value = listRow.data.areapathfull
     this.setState({
       IsItemSelected: "",
-      ItemSelectedURL: listRow.data.url
+      ItemSelectedURL: listRow.data.url,
+      ItemSelectedURLForLinking: listRow.data.urlforlinking
       // StoryRecordsArray: storiesplaceholder
     });
+    console.log(this.state.ItemSelectedURLForLinking);
     //alert("Item Selected");
    }
 
@@ -175,12 +193,12 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     for (let entry of Stories) {
       let AreaPath = new String(entry.fields["System.AreaPath"])
       let cleanedAreaPath = AreaPath.split("\\")[1]
-      storiesplaceholder.push({ "title": entry.fields["System.Title"], "areapathshort": cleanedAreaPath, "id": entry.fields["System.Id"], "url": urlBuilder+entry.id+"/", "areapathfull": entry.fields["System.AreaPath"]})
+      storiesplaceholder.push({ "title": entry.fields["System.Title"], "areapathshort": cleanedAreaPath, "id": entry.fields["System.Id"], "url": urlBuilder+entry.id+"/", "urlforlinking": entry.url, "areapathfull": entry.fields["System.AreaPath"]})
       // storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
     }
     for (let entry of storiesplaceholder) {
       //let cleanAreaPath = entry.description.split("\\")[1]
-      this.state.StoryRecordsArray.push({ "areapathshort": entry.areapathshort, "title": entry.title, "id": entry.id, "url": entry.url, "areapathfull": entry.areapathfull})
+      this.state.StoryRecordsArray.push({ "areapathshort": entry.areapathshort, "title": entry.title, "id": entry.id, "url": entry.url, "urlforlinking": entry.urlforlinking, "areapathfull": entry.areapathfull})
     }
     let areaPath = await (await workItemFormService.getFieldValue("System.AreaPath")).toString();
     console.log(areaPath)
@@ -202,6 +220,26 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     window.open(this.state.ItemSelectedURL, '_blank');
   }
 
+  public async addLink(){
+    this.setState({
+      FormHasParent: true
+      // StoryRecordsArray: storiesplaceholder
+    });
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    );
+    const linkInterfaceItem : WorkItemRelation[] =
+    [
+      {
+      rel: "Parent",
+      url: this.state.ItemSelectedURLForLinking,
+      attributes: [""]
+      }
+    ]
+      workItemFormService.addWorkItemRelations(linkInterfaceItem)
+    this.forceUpdate();
+  }
+
 
   // public setStoryList(){
   //   this.setState = {
@@ -211,23 +249,49 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   public async filter (e: any) {
     const keyword = e.target.value.toLowerCase();
-    if (keyword !== "") {
-      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.title.toLowerCase().match(keyword))) 
-      this.setState({
-        StoryRecordsProvider: arrayItemProvider
-        // StoryRecordsArray: storiesplaceholder
-      });
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    );
+    let areaPath = await (await workItemFormService.getFieldValue("System.AreaPath")).toString();
+    //if we are not showing all items
+    if (!this.state.showAllItemsCheckedState){
+      if (keyword !== "") {
+        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.title.toLowerCase().match(keyword) && val.areapathfull == areaPath)) 
+        this.setState({
+          StoryRecordsProvider: arrayItemProvider
+          // StoryRecordsArray: storiesplaceholder
+        });
+      } else {
+        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.areapathfull == areaPath))
+        this.setState({
+          StoryRecordsProvider: arrayItemProvider
+          // StoryRecordsArray: storiesplaceholder
+        });
+      }
     } else {
-      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray) 
-      this.setState({
-        StoryRecordsProvider: arrayItemProvider
-        // StoryRecordsArray: storiesplaceholder
-      });
+    //if we are showing all items
+      if (keyword !== "") {
+        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.title.toLowerCase().match(keyword))) 
+        this.setState({
+          StoryRecordsProvider: arrayItemProvider
+          // StoryRecordsArray: storiesplaceholder
+        });
+      } else {
+        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray) 
+        this.setState({
+          StoryRecordsProvider: arrayItemProvider
+          // StoryRecordsArray: storiesplaceholder
+        });
+      }
     }
   };
 
   public async checkedClick(checked: boolean){
     showAllCheckbox.value = checked
+    this.setState({
+      showAllItemsCheckedState: checked
+      // StoryRecordsArray: storiesplaceholder
+    });
     if(checked){
       let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray) 
       this.setState({
@@ -279,7 +343,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
           </div>
           
         </Card>
-        <div style={{ float: "left", marginTop: "10px" }}>
+        <div style={{ float: "left", marginTop: "10px", marginBottom: "10px" }}>
         <Checkbox
                 onChange={(event, checked) => (this.checkedClick(checked))}
                 checked={showAllCheckbox}
@@ -297,11 +361,35 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
             ariaLabel="Link my actvity"
             primary={true}
             iconProps={{ iconName: "Add" }}
-            onClick={() => alert("Primary button clicked!")}
+            onClick={this.addLink.bind(this)}
         />
         </ButtonGroup>
         </div>
-        <div className="sample-work-item-events">{this.state.eventContent}</div>
+        {
+            this.state.FormHasParent?
+            <div>
+            <MessageBar
+            messageBarType={MessageBarType.warning}
+            isMultiline={true}
+            dismissButtonAriaLabel="Close"
+            >
+            Linking is important for reporting purposes! Please ensure you link this work item to one of the selections above.
+            </MessageBar></div> 
+            : <div>
+            <MessageBar
+            messageBarType={MessageBarType.success}
+            isMultiline={true}
+            dismissButtonAriaLabel="Close"
+            actions={
+              <div>
+                <MessageBarButton>Remove This Link</MessageBarButton>
+              </div>
+            }
+            >
+            You're good to go! This work item is linked to INSERT WORK ITEM HERE.
+            </MessageBar>
+            </div>
+        }
       </div>
     );
     }       

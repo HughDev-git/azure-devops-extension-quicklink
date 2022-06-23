@@ -117,7 +117,8 @@ async function RetrieveCurrentProjectInfo(){
 }
 
 function RetrieveQuery(projectName: IProjectInfo){
-    let queryPath = "Shared Queries/Extension Queries - DO NOT MODIFY/All Active Customer Stories"
+    const input = SDK.getConfiguration().witInputs["QueryName"];
+    let queryPath = input
     const client = getClient(WorkItemTrackingRestClient)
     let query = client.getQuery(projectName.name!,queryPath)
     return query
