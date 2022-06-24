@@ -1,7 +1,7 @@
 {
     "contributions": [
         {
-            "id": "quicklink-work-item-form-group",
+            "id": "jarhughe.quicklinks.quicklink-work-item-form-group",
             "type": "ms.vss-work-web.work-item-form-control",
             "description": "Custom work item form group",
             "targets": [

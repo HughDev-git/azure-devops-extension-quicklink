@@ -23,8 +23,10 @@ import { Host} from "./CurrentHost";
 import { SearchBox } from "@fluentui/react/lib/SearchBox";
 import { Observer } from "azure-devops-ui/Observer";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
+import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking/WorkItemTrackingClient";
 import { IWorkItemFieldChangedArgs, IWorkItemFormService, WorkItemTrackingServiceIds, WorkItemRelation } from "azure-devops-extension-api/WorkItemTracking";
 import { Link, Stack, StackItem, MessageBar, MessageBarType, ChoiceGroup, IStackProps, MessageBarButton, Text, IChoiceGroupStyles, ThemeProvider, initializeIcons } from "@fluentui/react";
+import { getClient } from "azure-devops-extension-api";
 
 interface MyStates {
   StoryRecordsArray: Array<ITaskItem<{}>>;
@@ -40,6 +42,8 @@ interface MyStates {
   FormAreaPath: string;
   showAllItemsCheckedState: boolean;
   FormHasParent: string;
+  ParentItemTitle: string;
+  AreaPathOnLoad: string;
 }
 
 // const commandBarItems: IHeaderCommandBarItem[] = [
@@ -78,7 +82,9 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       ItemSelectedAreaPathShort: "",
       FormAreaPath: "",
       showAllItemsCheckedState: false,
-      FormHasParent: ""
+      FormHasParent: "",
+      ParentItemTitle: "",
+      AreaPathOnLoad: ""
     };
   }
 
@@ -93,14 +99,14 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   public componentDidMount() {
     SDK.init().then(() => {
-      initializeIcons();
       this.registerEvents();
+      initializeIcons();
       this.fetchAllJSONDataPlusState().then(() => {
-      this.buildWidget();
+      this.buildWidget()
       // this.forceUpdate();
       // this.projectQueries();
         })
-    });
+    })
   }
 
   public buildWidget() {
@@ -109,16 +115,52 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     });
   }
 
-  private registerEvents() {
+  private async registerEvents() {
+    console.log("RegisterEvents Fired")
     SDK.register(SDK.getContributionId(), () => {
-      return {
+      return { 
         // Called when the active work item is modified
         onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
-          let string = args.changedFields["System.AreaPath"] || ""
-          //console.log(string)
-          if (string != ""){
+          console.log(`onFieldChanged - ${JSON.stringify(args)}`)
+          // let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
+          // if (string != "NOT AREA PATH"){
+          //   // alert("Area Path Changed!")
+          //   this.setState({
+          //     AreaPathOnLoad: string
+          //   });
+          // } else {
+          //   console.log("Some other field was changed")
+          // }
+          //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
+          // args.changedFields
+          // if (args.changedFields.key == "System.AreaPath"){
+          //   alert("Area Path Changed!")
+          // }
+          // this.setState({
+          //   eventContent: "The field changed was - " + string
+          // });
+        }
+    }
+    
+  })
+  }
+
+  private registerEventP2(contID: string){
+    SDK.register(SDK.getContributionId(), () => {
+      return { 
+        // Called when the active work item is modified
+        onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
+          let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
+          console.log(string)
+          if (string != "NOT AREA PATH"){
             // alert("Area Path Changed!")
-            this.filterLinks()
+            // console.log("Area Path was changed")
+            // this.filterLinks()
+            this.setState({
+              AreaPathOnLoad: string
+            });
+          } else {
+            console.log("Some other field was changed")
           }
           //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
           // args.changedFields
@@ -144,7 +186,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService
     );
-    let areaPath = (await workItemFormService.getFieldValue("System.AreaPath")).toString();
+    let areaPath = this.state.AreaPathOnLoad;
     let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.areapathfull == areaPath)) 
     this.setState({
       StoryRecordsProvider: arrayItemProvider
@@ -172,12 +214,20 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
       WorkItemTrackingServiceIds.WorkItemFormService
     );
     //Determine if Parent exists first
+    const client = getClient(WorkItemTrackingRestClient);
     let relations = await workItemFormService.getWorkItemRelations();
     for (let item of relations){
-      console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
+      //console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
       if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
+        //Get the id from end of string
+        var matches : number;
+        matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
+        console.log(matches);
+        let workitem = client.getWorkItem(matches)
+        let title = (await workitem).fields["System.Title"]
         this.setState({
-          FormHasParent: "1"
+          FormHasParent: "1",
+          ParentItemTitle: title
         });
       } else {
         this.setState({
@@ -229,7 +279,8 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 
   public async addLink(){
     this.setState({
-      FormHasParent: "1"
+      FormHasParent: "1",
+      ParentItemTitle: this.selectedItemTitle.value
       // StoryRecordsArray: storiesplaceholder
     });
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
@@ -426,7 +477,7 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
               </div>
             }
             >
-            You're good to go! This work item is linked to INSERT WORK ITEM HERE.
+            You're good to go! This work item is linked to {this.state.ParentItemTitle}.
             </MessageBar>
         
     }
@@ -473,3 +524,4 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
 export default StoryLinkComponent;
 
 showRootComponent(<StoryLinkComponent />);
+
