@@ -116,21 +116,52 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   }
 
   private async registerEvents() {
-    console.log("RegisterEvents Fired")
-    SDK.register(SDK.getContributionId(), () => {
+    //console.log("RegisterEvents Fired")
+    //We need to define contribtuion ID because for some reason SDK.getContributionID() doesn't always return the right ID. Additionally, we will make 2 registers because the contribution ID doesn't always update
+    let contID1 = "jarhughe.quicklinks.quicklink-work-item-form-group"
+    let contID2 = "quicklink-work-item-form-group"
+    SDK.register(contID1, () => {
       return { 
         // Called when the active work item is modified
         onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
-          console.log(`onFieldChanged - ${JSON.stringify(args)}`)
-          // let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
-          // if (string != "NOT AREA PATH"){
-          //   // alert("Area Path Changed!")
-          //   this.setState({
-          //     AreaPathOnLoad: string
-          //   });
-          // } else {
-          //   console.log("Some other field was changed")
+          // console.log(`onFieldChanged - ${JSON.stringify(args)}`)
+          let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
+          if (string != "NOT AREA PATH"){
+            // alert("Area Path Changed!")
+            this.setState({
+              AreaPathOnLoad: string
+            });
+            this.filterLinks();
+          } else {
+            // console.log("Some other field was changed")
+          }
+          //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
+          // args.changedFields
+          // if (args.changedFields.key == "System.AreaPath"){
+          //   alert("Area Path Changed!")
           // }
+          // this.setState({
+          //   eventContent: "The field changed was - " + string
+          // });
+        }
+    }
+    
+  })
+    SDK.register(contID2, () => {
+      return { 
+        // Called when the active work item is modified
+        onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
+          // console.log(`onFieldChanged - ${JSON.stringify(args)}`)
+          let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
+          if (string != "NOT AREA PATH"){
+            // alert("Area Path Changed!")
+            this.setState({
+              AreaPathOnLoad: string
+            });
+            this.filterLinks();
+          } else {
+            // console.log("Some other field was changed")
+          }
           //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
           // args.changedFields
           // if (args.changedFields.key == "System.AreaPath"){
@@ -145,35 +176,35 @@ export class StoryLinkComponent extends React.Component<{}, MyStates> {
   })
   }
 
-  private registerEventP2(contID: string){
-    SDK.register(SDK.getContributionId(), () => {
-      return { 
-        // Called when the active work item is modified
-        onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
-          let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
-          console.log(string)
-          if (string != "NOT AREA PATH"){
-            // alert("Area Path Changed!")
-            // console.log("Area Path was changed")
-            // this.filterLinks()
-            this.setState({
-              AreaPathOnLoad: string
-            });
-          } else {
-            console.log("Some other field was changed")
-          }
-          //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
-          // args.changedFields
-          // if (args.changedFields.key == "System.AreaPath"){
-          //   alert("Area Path Changed!")
-          // }
-          // this.setState({
-          //   eventContent: "The field changed was - " + string
-          // });
-        }
-    }
-  })
-  }
+  // private registerEventP2(contID: string){
+  //   SDK.register(SDK.getContributionId(), () => {
+  //     return { 
+  //       // Called when the active work item is modified
+  //       onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
+  //         let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
+  //         console.log(string)
+  //         if (string != "NOT AREA PATH"){
+  //           // alert("Area Path Changed!")
+  //           // console.log("Area Path was changed")
+  //           // this.filterLinks()
+  //           this.setState({
+  //             AreaPathOnLoad: string
+  //           });
+  //         } else {
+  //           console.log("Some other field was changed")
+  //         }
+  //         //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
+  //         // args.changedFields
+  //         // if (args.changedFields.key == "System.AreaPath"){
+  //         //   alert("Area Path Changed!")
+  //         // }
+  //         // this.setState({
+  //         //   eventContent: "The field changed was - " + string
+  //         // });
+  //       }
+  //   }
+  // })
+  // }
 
   //TEST FUNCTIONS START
   // public async projectQueries() {
