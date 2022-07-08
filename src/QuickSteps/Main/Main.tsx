@@ -6,7 +6,7 @@ import {
   ListItem,
   IListRow
 } from "azure-devops-ui/List";
-import "./quicklinks.scss"
+import "./quicksteps.scss"
 import { IHeaderCommandBarItem } from "azure-devops-ui/HeaderCommandBar";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { showRootComponent } from "../../Common";

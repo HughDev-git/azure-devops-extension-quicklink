@@ -1,7 +1,7 @@
 {
-  "name": "azure-devops-quicklink",
+  "name": "azure-devops-quicksteps",
   "version": "1.0.0",
-  "description": "Microsoft QuickLinks Azure DevOps Extension",
+  "description": "Microsoft QuickSteps Azure DevOps Extension",
   "scripts": {
     "clean": "rimraf ./dist",
     "compile": "npm run clean && webpack --mode production",
@@ -9,21 +9,21 @@
     "build": "npm run compile",
     "build:dev": "npm run compile:dev && npm run postbuild",
     "postbuild": "npm run package-extension -- --rev-version",
-    "package-extension": "tfx extension create --manifest-globs azure-devops-extension.json src/QuickLinks/Main/*.json",
-    "publish-extension": "tfx extension publish --manifest-globs azure-devops-extension.json src/QuickLinks/Main/*.json",
+    "package-extension": "tfx extension create --manifest-globs azure-devops-extension.json src/QuickSteps/Main/*.json",
+    "publish-extension": "tfx extension publish --manifest-globs azure-devops-extension.json src/QuickSteps/Main/*.json",
     "test": "set TEST_REPORT_FILENAME=test-results.xml jest --verbose"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HughDev-git/azure-devops-quicklink.git"
+    "url": "git+https://github.com/HughDev-git/azure-devops-quicksteps.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/HughDev-git/azure-devops-quicklink/issues"
+    "url": "https://github.com/HughDev-git/azure-devops-quicksteps/issues"
   },
-  "homepage": "https://github.com/HughDev-git/azure-devops-quicklink#readme",
+  "homepage": "https://github.com/HughDev-git/azure-devops-quicksteps#readme",
   "dependencies": {
     "@fluentui/react": "8.67.3",
     "all": "^0.0.0",
