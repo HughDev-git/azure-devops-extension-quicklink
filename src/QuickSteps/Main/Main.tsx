@@ -1,558 +1,344 @@
 import * as React from "react";
 import {
-  ScrollableList,
-  IListItemDetails,
-  ListSelection,
-  ListItem,
-  IListRow
-} from "azure-devops-ui/List";
-import "./quicksteps.scss"
-import { IHeaderCommandBarItem } from "azure-devops-ui/HeaderCommandBar";
+  getStatusIndicatorData,
+  IPipelineItem,
+  UserResponeItems
+} from "./UserResponses";
+
+import { Card } from "azure-devops-ui/Card";
+import { Status, StatusSize } from "azure-devops-ui/Status";
+import {
+  ITableColumn,
+  SimpleTableCell,
+  Table,
+  ColumnSorting,
+  SortOrder,
+  sortItems,
+  ITableRow
+} from "azure-devops-ui/Table";
+import {
+  ProgressIndicator
+} from "@fluentui/react";
+import { Tooltip } from "azure-devops-ui/TooltipEx";
+import { MessageCard, MessageCardSeverity } from "azure-devops-ui/MessageCard";
 import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
+import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { showRootComponent } from "../../Common";
 import * as SDK from "azure-devops-extension-sdk";
-// import { Icon, IconSize } from "azure-devops-ui/Icon";
-import { Card } from "azure-devops-ui/Card";
-import { Button } from "azure-devops-ui/Button";
-import { ButtonGroup } from "azure-devops-ui/ButtonGroup";
-import { Checkbox } from "azure-devops-ui/Checkbox";
-import { ITaskItem, MSStoryData } from "./Data";
-import { QueryResult } from "./StoryData";
-import { Project} from "./CurrentProject";
-import { Host} from "./CurrentHost";
-import { SearchBox } from "@fluentui/react/lib/SearchBox";
-import { Observer } from "azure-devops-ui/Observer";
-import { ObservableValue } from "azure-devops-ui/Core/Observable";
-import {WorkItemTrackingRestClient} from "azure-devops-extension-api/WorkItemTracking/WorkItemTrackingClient";
-import { IWorkItemFieldChangedArgs, IWorkItemFormService, WorkItemTrackingServiceIds, WorkItemRelation } from "azure-devops-extension-api/WorkItemTracking";
-import { Link, Stack, StackItem, MessageBar, MessageBarType, ChoiceGroup, IStackProps, MessageBarButton, Text, IChoiceGroupStyles, ThemeProvider, initializeIcons } from "@fluentui/react";
-import { getClient } from "azure-devops-extension-api";
+
 
 interface MyStates {
-  StoryRecordsArray: Array<ITaskItem<{}>>;
-  StoryRecordsProvider: ArrayItemProvider<ITaskItem>
-  IsRenderReady: boolean;
-  IsItemSelected: string;
-  ItemSelectedID: number;
-  ItemSelectedURL: string;
-  ItemSelectedURLForLinking: string
-  ItemSelectedTitle: string;
-  ItemSelectedAreaPathFull: string;
-  ItemSelectedAreaPathShort: string;
-  FormAreaPath: string;
-  showAllItemsCheckedState: boolean;
-  FormHasParent: string;
-  ParentItemTitle: string;
-  AreaPathOnLoad: string;
+  StepRecordsItemProvider: ArrayItemProvider<IPipelineItem>;
+  isCoachMarkVisible: boolean;
+  percentComplete: number;
+  totalSteps: number;
+  completedSteps: number;
+  isRenderReady: boolean;
 }
 
-// const commandBarItems: IHeaderCommandBarItem[] = [
-//   {
-//     id: "testCreate",
-//     // text: "Add",
-//     onActivate: () => {
-//       alert("This would normally trigger a modal popup");
-//     },
-//     iconProps: {
-//       iconName: "Add"
-//     },
-//     isPrimary: true,
-//     tooltipProps: {
-//       text: "Add activity to the selected story"
-//     }
-//   }
-// ];
-
-
-const showAllCheckbox = new ObservableValue<boolean>(false);
-
-export class StoryLinkComponent extends React.Component<{}, MyStates> {
+export class QuickSteps extends React.Component<{}, MyStates> {
   constructor(props: {}) {
     super(props);
     this.state = {
-      StoryRecordsArray: [],
-      IsRenderReady: false,
-      StoryRecordsProvider: new ArrayItemProvider([]),
-      IsItemSelected: "none",
-      ItemSelectedID: 0,
-      ItemSelectedTitle: "",
-      ItemSelectedURL: "",
-      ItemSelectedURLForLinking: "",
-      ItemSelectedAreaPathFull: "",
-      ItemSelectedAreaPathShort: "",
-      FormAreaPath: "",
-      showAllItemsCheckedState: false,
-      FormHasParent: "",
-      ParentItemTitle: "",
-      AreaPathOnLoad: ""
+      StepRecordsItemProvider: new ArrayItemProvider([]),
+      isCoachMarkVisible: false,
+      totalSteps: 0,
+      completedSteps: 0,
+      percentComplete: 0,
+      isRenderReady: false
     };
   }
 
-  public selection = new ListSelection(true);
-
-  private selectedItemID = new ObservableValue<number>(0);
-  private selectedItemTitle = new ObservableValue<string>("");
-  private selectedItemURL = new ObservableValue<string>("");
-  private selectedItemAreaPathFull = new ObservableValue<string>("");
-  // public tasks = this.fetchAllJSONDataPlusState;
-  // public tasks = new ArrayItemProvider(MSStoryData);
-
   public componentDidMount() {
     SDK.init().then(() => {
-      this.registerEvents();
-      initializeIcons();
-      this.fetchAllJSONDataPlusState().then(() => {
-      this.buildWidget()
-      // this.forceUpdate();
-      // this.projectQueries();
-        })
+    this.fetchAllJSONData().then(() => {
+      this.isRenderReady();
+      })
     })
   }
 
-  public buildWidget() {
+  public isRenderReady(){
     this.setState({
-      IsRenderReady: true,
-    });
-  }
-
-  private async registerEvents() {
-    //console.log("RegisterEvents Fired")
-    //We need to define contribtuion ID because for some reason SDK.getContributionID() doesn't always return the right ID. Additionally, we will make 2 registers because the contribution ID doesn't always update
-    let contID1 = "jarhughe.quicklinks.quicklink-work-item-form-group"
-    let contID2 = "quicklink-work-item-form-group"
-    SDK.register(contID1, () => {
-      return { 
-        // Called when the active work item is modified
-        onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
-          // console.log(`onFieldChanged - ${JSON.stringify(args)}`)
-          let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
-          if (string != "NOT AREA PATH"){
-            // alert("Area Path Changed!")
-            this.setState({
-              AreaPathOnLoad: string
-            });
-            this.filterLinks();
-          } else {
-            // console.log("Some other field was changed")
-          }
-          //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
-          // args.changedFields
-          // if (args.changedFields.key == "System.AreaPath"){
-          //   alert("Area Path Changed!")
-          // }
-          // this.setState({
-          //   eventContent: "The field changed was - " + string
-          // });
-        }
-    }
-    
-  })
-    SDK.register(contID2, () => {
-      return { 
-        // Called when the active work item is modified
-        onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
-          // console.log(`onFieldChanged - ${JSON.stringify(args)}`)
-          let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
-          if (string != "NOT AREA PATH"){
-            // alert("Area Path Changed!")
-            this.setState({
-              AreaPathOnLoad: string
-            });
-            this.filterLinks();
-          } else {
-            // console.log("Some other field was changed")
-          }
-          //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
-          // args.changedFields
-          // if (args.changedFields.key == "System.AreaPath"){
-          //   alert("Area Path Changed!")
-          // }
-          // this.setState({
-          //   eventContent: "The field changed was - " + string
-          // });
-        }
-    }
-    
-  })
-  }
-
-  // private registerEventP2(contID: string){
-  //   SDK.register(SDK.getContributionId(), () => {
-  //     return { 
-  //       // Called when the active work item is modified
-  //       onFieldChanged: (args: IWorkItemFieldChangedArgs) => {
-  //         let string = args.changedFields["System.AreaPath"] || "NOT AREA PATH"
-  //         console.log(string)
-  //         if (string != "NOT AREA PATH"){
-  //           // alert("Area Path Changed!")
-  //           // console.log("Area Path was changed")
-  //           // this.filterLinks()
-  //           this.setState({
-  //             AreaPathOnLoad: string
-  //           });
-  //         } else {
-  //           console.log("Some other field was changed")
-  //         }
-  //         //const checkstringExistence = args.changedFields.some( (key: string) => key == "System.AreaPath")
-  //         // args.changedFields
-  //         // if (args.changedFields.key == "System.AreaPath"){
-  //         //   alert("Area Path Changed!")
-  //         // }
-  //         // this.setState({
-  //         //   eventContent: "The field changed was - " + string
-  //         // });
-  //       }
-  //   }
-  // })
-  // }
-
-  //TEST FUNCTIONS START
-  // public async projectQueries() {
-  //   const queries = (await QueryResult);
-  //   return queries
-  // }
-  //TEST FUNCTIONS END
-
-  public async filterLinks() {
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      WorkItemTrackingServiceIds.WorkItemFormService
-    );
-    let areaPath = this.state.AreaPathOnLoad;
-    let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.areapathfull == areaPath)) 
-    this.setState({
-      StoryRecordsProvider: arrayItemProvider
+      isRenderReady: true
       // StoryRecordsArray: storiesplaceholder
     });
   }
-
-  public OnSelect =  async (event: React.SyntheticEvent<HTMLElement>, listRow: IListRow<ITaskItem<{}>>) => {
-    this.selectedItemID.value = listRow.data.id
-    this.selectedItemTitle.value = listRow.data.title
-    this.selectedItemURL.value = listRow.data.url
-    this.selectedItemAreaPathFull.value = listRow.data.areapathfull
-    this.setState({
-      IsItemSelected: "",
-      ItemSelectedURL: listRow.data.url,
-      ItemSelectedURLForLinking: listRow.data.urlforlinking
-      // StoryRecordsArray: storiesplaceholder
-    });
-    //console.log(this.state.ItemSelectedURLForLinking);
-    //alert("Item Selected");
-   }
-
-  public async fetchAllJSONDataPlusState(){
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      WorkItemTrackingServiceIds.WorkItemFormService
-    );
-    //Determine if Parent exists first
-    const client = getClient(WorkItemTrackingRestClient);
-    let relations = await workItemFormService.getWorkItemRelations();
-    for (let item of relations){
-      //console.log("Attributes: "+item.attributes+" ||| Link Type: "+item.rel+" ||| URL: "+item.url)
-      if(item.rel == "System.LinkTypes.Hierarchy-Reverse"){
-        //Get the id from end of string
-        var matches : number;
-        matches = parseInt(item.url.match(/\d+$/)?.toString()||"")
-        console.log(matches);
-        let workitem = client.getWorkItem(matches)
-        let title = (await workitem).fields["System.Title"]
-        this.setState({
-          FormHasParent: "1",
-          ParentItemTitle: title
-        });
-      } else {
-        this.setState({
-          FormHasParent: "0"
-        });
-      }
-      // console.log("Attributes: "+b.attributes+" ||| Link Type: "+b.rel+" ||| URL: "+b.url)
-    }
-    if (!relations.length){
-      this.setState({
-        FormHasParent: "0"
-      });
-    }
-    let storiesplaceholder = new Array<ITaskItem<{}>>();
-    const thisProject = (await Project);
-    const thisHost = (await Host);
-    const Stories = (await QueryResult);
-    const urlBuilder = "https://dev.azure.com/"+thisHost.name+"/"+thisProject?.name+"/_workitems/edit/";
-    //console.log(urlBuilder);
-    for (let entry of Stories) {
-      let AreaPath = new String(entry.fields["System.AreaPath"])
-      let cleanedAreaPath = AreaPath.split("\\")[1]
-      storiesplaceholder.push({ "title": entry.fields["System.Title"], "areapathshort": cleanedAreaPath, "id": entry.fields["System.Id"], "url": urlBuilder+entry.id+"/", "urlforlinking": entry.url, "areapathfull": entry.fields["System.AreaPath"]})
-      // storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
-    }
-    for (let entry of storiesplaceholder) {
-      //let cleanAreaPath = entry.description.split("\\")[1]
-      this.state.StoryRecordsArray.push({ "areapathshort": entry.areapathshort, "title": entry.title, "id": entry.id, "url": entry.url, "urlforlinking": entry.urlforlinking, "areapathfull": entry.areapathfull})
-    }
-    let areaPath = (await workItemFormService.getFieldValue("System.AreaPath")).toString();
-    //console.log(areaPath)
-    let arrayItemProvider = new ArrayItemProvider(storiesplaceholder.filter((val) => val.areapathfull == areaPath))
-    // return arrayItemProvider
-    this.setState({
-      StoryRecordsProvider: arrayItemProvider
-      // StoryRecordsArray: storiesplaceholder
-    });
-
-  }
-
-  public viewItem(){
-    // console.log("URL: "+this.state.ItemSelectedURL)
-    // console.log("ID: "+this.state.ItemSelectedID)
-    // console.log("Title: "+this.state.ItemSelectedTitle)
-    // console.log("AreaPathFull: "+this.state.ItemSelectedAreaPathFull)
-    // console.log("AreaPathShort: "+this.state.ItemSelectedAreaPathShort)
-    window.open(this.state.ItemSelectedURL, '_blank');
-  }
-
-  public async addLink(){
-    this.setState({
-      FormHasParent: "1",
-      ParentItemTitle: this.selectedItemTitle.value
-      // StoryRecordsArray: storiesplaceholder
-    });
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      WorkItemTrackingServiceIds.WorkItemFormService
-    );
-    const linkInterfaceItem : WorkItemRelation[] =
-    [
-      {
-      rel: "Parent",
-      url: this.state.ItemSelectedURLForLinking,
-      attributes: [""]
-      }
-    ]
-      workItemFormService.addWorkItemRelations(linkInterfaceItem)
-    // this.forceUpdate();
-  }
-
-  public async removeLink(){
-    console.log(this.state.ItemSelectedURLForLinking);
-    this.setState({
-      FormHasParent: "0"
-      // StoryRecordsArray: storiesplaceholder
-    });
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      WorkItemTrackingServiceIds.WorkItemFormService
-    );
-    let a = await workItemFormService.getWorkItemRelations();
-    for (let b of a){
-      if(b.rel == "System.LinkTypes.Hierarchy-Reverse"){
-        const removelinkInterfaceItem : WorkItemRelation[] =
-        [
-          {
-          rel: b.rel,
-          url: b.url,
-          attributes: b.attributes
-          }
-        ]
-        workItemFormService.removeWorkItemRelations(removelinkInterfaceItem)
-      }
-    }
-
-      
-    // this.forceUpdate();
-  }
-
-
-  // public setStoryList(){
-  //   this.setState = {
-  //     StoryRecordsProvider: this.state.StoryRecordsArray,
-  //   };
-  // }
-
-  public async filter (e: any) {
-    const keyword = e.target.value.toLowerCase();
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      WorkItemTrackingServiceIds.WorkItemFormService
-    );
-    let areaPath = await (await workItemFormService.getFieldValue("System.AreaPath")).toString();
-    //if we are not showing all items
-    if (!this.state.showAllItemsCheckedState){
-      if (keyword !== "") {
-        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.title.toLowerCase().match(keyword) && val.areapathfull == areaPath)) 
-        this.setState({
-          StoryRecordsProvider: arrayItemProvider
-          // StoryRecordsArray: storiesplaceholder
-        });
-      } else {
-        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.areapathfull == areaPath))
-        this.setState({
-          StoryRecordsProvider: arrayItemProvider
-          // StoryRecordsArray: storiesplaceholder
-        });
-      }
-    } else {
-    //if we are showing all items
-      if (keyword !== "") {
-        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.title.toLowerCase().match(keyword))) 
-        this.setState({
-          StoryRecordsProvider: arrayItemProvider
-          // StoryRecordsArray: storiesplaceholder
-        });
-      } else {
-        let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray) 
-        this.setState({
-          StoryRecordsProvider: arrayItemProvider
-          // StoryRecordsArray: storiesplaceholder
-        });
-      }
-    }
-  };
-
-  public async checkedClick(checked: boolean){
-    showAllCheckbox.value = checked
-    this.setState({
-      showAllItemsCheckedState: checked
-      // StoryRecordsArray: storiesplaceholder
-    });
-    if(checked){
-      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray) 
-      this.setState({
-        StoryRecordsProvider: arrayItemProvider
-        // StoryRecordsArray: storiesplaceholder
-      });
-    } else {
-      const workItemFormService = await SDK.getService<IWorkItemFormService>(
-        WorkItemTrackingServiceIds.WorkItemFormService
-      );
-      let areaPath = (await workItemFormService.getFieldValue("System.AreaPath")).toString();
-      let arrayItemProvider = new ArrayItemProvider(this.state.StoryRecordsArray.filter((val) => val.areapathfull == areaPath)) 
-      this.setState({
-        StoryRecordsProvider: arrayItemProvider
-        // StoryRecordsArray: storiesplaceholder
-      });
-    }
-  }
-
   public render(): JSX.Element {
-    if (this.state.IsRenderReady){
+    if (this.state.isRenderReady){
     return (
       <div>
-        {this.state.FormHasParent == "0" ?
-        <div>
+        <ProgressIndicator
+          label={
+            "My Progress | " +
+            parseInt(this.state.percentComplete.toFixed(1)) * 100 +
+            " %"
+          }
+          // description={this.state.percentComplete + " %"}
+          percentComplete={this.state.percentComplete}
+        />
         <Card
           className="flex-grow bolt-table-card"
-          // titleProps={{ text: "Available Stories", ariaLevel: 9 }}
-          // headerCommandBarItems={commandBarItems}
+          contentProps={{ contentPadding: false }}
+          titleProps={{ text: "Getting Started" }}
         >
-          <div className="flex-grow bolt-table-card">
-            <SearchBox
-              placeholder="Search"
-              underlined={true}
-              onChange={this.filter.bind(this)}
-            />
-            <div style={{ display: "flex", height: "150px" }}>
-              <ScrollableList
-                itemProvider={this.state.StoryRecordsProvider}
-                renderRow={this.renderRow}
-                selection={this.selection}
-                onSelect={this.OnSelect.bind(this)}
-                width="100%"
-              />
-              <Observer selectedItem={this.selectedItemTitle}>
-                {(props: { selectedItem: string}) => {
-                  return null;
-               }}
-            </Observer>
-            </div>
-          </div>
-          
+          {/* <Observer itemProvider={this.itemProvider}>
+          {(observableProps: {
+            itemProvider: ArrayItemProvider<IPipelineItem>;
+          }) => ( */}
+          <Table<IPipelineItem>
+            ariaLabel="Advanced table"
+            //behaviors={[this.sortingBehavior]}
+            className="table-example"
+            columns={this.columns}
+            containerClassName="h-scroll-auto"
+            itemProvider={this.state.StepRecordsItemProvider}
+            showLines={true}
+            //singleClickActivation={true}
+            onSelect={(event, data) => this.updateStatus(data)}
+            // onActivate={(event, row) =>
+          />
         </Card>
-        <div style={{ float: "left", marginTop: "10px", marginBottom: "20px" }}>
-        <Checkbox
-                onChange={(event, checked) => (this.checkedClick(checked))}
-                checked={showAllCheckbox}
-                label="Show All Items"
-            />
-        </div>
-        <div style={{ float: "right", marginTop: "10px", display: this.state.IsItemSelected }}>
-        <ButtonGroup>
-        <Button
-            ariaLabel="View this story"
-            iconProps={{ iconName: "View" }}
-            onClick={this.viewItem.bind(this)}
-        />
-        <Button
-            ariaLabel="Link my actvity"
-            primary={true}
-            iconProps={{ iconName: "Add" }}
-            onClick={this.addLink.bind(this)}
-        />
-        </ButtonGroup>
-        </div>
-        <MessageBar
-            messageBarType={MessageBarType.warning}
-            isMultiline={true}
-            dismissButtonAriaLabel="Close"
+        <div style={{ marginTop: "10px" }}>
+          {this.state.isCoachMarkVisible ? (
+            <MessageCard
+              //className="flex-self-stretch"
+              onDismiss={this.onDismissCoach.bind(this)}
+              severity={MessageCardSeverity.Info}
             >
-            Linking is important for reporting purposes! Please ensure you link this work item to one of the selections above.
-            </MessageBar>
+              It looks like this next step needs to be completed by someone
+              else. Once you receive confirmation it has been completed, come
+              back here and go ahead and mark it as complete.
+            </MessageCard>
+          ) : (
+            ""
+          )}
         </div>
-        :
-        
-            <MessageBar
-            messageBarType={MessageBarType.success}
-            isMultiline={true}
-            dismissButtonAriaLabel="Close"
-            actions={
-              <div>
-                <MessageBarButton
-                  onClick={this.removeLink.bind(this)}
-                >
-                Remove This Link
-                </MessageBarButton>
-              </div>
-            }
-            >
-            You're good to go! This work item is linked to {this.state.ParentItemTitle}.
-            </MessageBar>
-        
-    }
-    
-      </div>);} 
-    else {
+      </div> 
+    );} else {
       return (<div className="flex-row"></div>)
-
     }
-    
+  }
+  public onDismissCoach() {
+    this.setState({
+      isCoachMarkVisible: false
+      // StoryRecordsArray: storiesplaceholder
+    });
+  }
+  public async updateStatus(e: ITableRow<Partial<IPipelineItem>>) {
+    //alert(pipelineItems[e.index].step);
+    //If it is the first step selected and not complete, mark complete
+    let responses = (await UserResponeItems)
+    this.setMarks(e, responses);
+    // console.log(UserResponeItems.length);
+    let stepsplaceholder = new Array<IPipelineItem<{}>>();
+    for (let entry of responses) {
+      // let AreaPath = new String(entry.fields["System.AreaPath"])
+      // let cleanedAreaPath = AreaPath.split("\\")[1]
+      stepsplaceholder.push({
+        step: entry.step,
+        title: entry.title,
+        status: entry.status,
+        type: entry.type
+      });
+      // let total = stepsplaceholder.length;
+      // let completed = stepsplaceholder.filter((a) => a.status === "success")
+      // .length;
+      // console.log("Total: " + total + "Completed: " + completed);
+      let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
+      this.setState({
+        StepRecordsItemProvider: arrayItemProvider
+        // StoryRecordsArray: storiesplaceholder
+      });
+      // alert(e.index);
+    }
+  }
+  public updatePercentComplete() {
+    let percentCompleted = this.state.completedSteps / this.state.totalSteps;
+    console.log("Percent Complete:  " + percentCompleted);
+    this.setState({
+      percentComplete: percentCompleted
+      // StoryRecordsArray: storiesplaceholder
+    });
+  }
+  public setMarks(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
+    if (responses[e.index].status !== "success") {
+      //determine if frst
+      if (e.index === 0) {
+        responses[e.index].status = "success";
+      }
+      if (e.index !== 0 && responses[e.index - 1].status === "success") {
+        responses[e.index].status = "success";
+      }
+    } else {
+      for (let entry of responses) {
+        if (entry.step >= responses[e.index].step) {
+          entry.status = "queued";
+        }
+      }
+    }
+    let total = responses.length;
+    let completed = responses.filter((a) => a.status === "success")
+      .length;
+    this.setState({
+      totalSteps: total,
+      completedSteps: completed,
+      percentComplete: completed / total
+    });
+    console.log("Total Steps:  " + total);
+    console.log("Completed Steps:  " + completed);
+    // for (let entry of pipelineItems) {
+    //   if (entry.step >= pipelineItems[e.index].step) {
+    //     if (
+    //       entry.type === "external" &&
+    //       pipelineItems[e.index - 1].status === "success"
+    //     ) {
+    //       entry.status = "running";
+    //     } else {
+    //       entry.status = "queued";
+    //     }
+    //     // entry.status = "queued";
+    //   }
+    // }
+    //do a check to see if this is the last item in array
+    if (responses.length > e.index + 1) {
+      if (
+        responses[e.index + 1].type === "external" &&
+        responses[e.index].status === "success"
+      ) {
+        // alert("set running");
+        responses[e.index + 1].status = "running";
+        this.setState({
+          isCoachMarkVisible: true
+          // StoryRecordsArray: storiesplaceholder
+        });
+        setTimeout(this.onDismissCoach.bind(this), 20000);
+      }
+    }
+    // do a check if we ever click an item that is external
+    // if (
+    //   pipelineItems[e.index].type === "external" &&
+    //   pipelineItems[e.index].status === "success"
+    // ) {
+    //   pipelineItems[e.index].status = "running";
+    // }
   }
 
+  public async fetchAllJSONData() {
+     let stepsplaceholder = new Array<IPipelineItem<{}>>();
+    const responses = (await UserResponeItems);
+    // const schema = (await ADOSchema)
+    // var parseRespones = JSON.parse(responses)
+    for (let entry of responses) {
+      // let AreaPath = new String(entry.fields["System.AreaPath"])
+      // let cleanedAreaPath = AreaPath.split("\\")[1]
+      stepsplaceholder.push({
+        step: entry.step,
+        title: entry.title,
+        status: entry.status,
+        type: entry.type
+      });
+      // storiesplaceholder.push({ "name": entry.fields["System.Title"], "description": entry.id.toString()})
+      let arrayItemProvider = new ArrayItemProvider(stepsplaceholder);
+      this.setState({
+        StepRecordsItemProvider: arrayItemProvider
+        // StoryRecordsArray: storiesplaceholder
+      });
+    }
+    // console.log("123");
+  }
+  private columns: ITableColumn<IPipelineItem> []= [
+    {
+      id: "title",
+      name: "Action",
+      renderCell: renderNameColumn,
+      readonly: true,
+      // sortProps: {
+      //     ariaLabelAscending: "Sorted A to Z",
+      //     ariaLabelDescending: "Sorted Z to A",
+      // },
+      width: 600
+    },
+    // {
+    //     className: "pipelines-two-line-cell",
+    //     id: "actions",
+    //     name: "Actions",
+    //     renderCell: renderLastRunColumn,
+    //     width: -33,
+    // },
+    // {
+    //     id: "time",
+    //     ariaLabel: "Time and duration",
+    //     readonly: true,
+    //     renderCell: renderNameColumn,
+    //     width: -33,
+    // },
+    // new ColumnMore(() => {
+    //     return {
+    //         id: "sub-menu",
+    //         items: [
+    //             { id: "submenu-one", text: "SubMenuItem 1" },
+    //             { id: "submenu-two", text: "SubMenuItem 2" },
+    //         ],
+    //     };
+    // }),
+  ];
 
-  private renderRow = (
-    index: number,
-    item: ITaskItem,
-    details: IListItemDetails<ITaskItem>,
-    key?: string
-  ): JSX.Element => {
-    return (
-      <ListItem
-        key={key || "list-item" + index}
-        index={index}
-        details={details}
-      >
-        <div className="list-example-row flex-row h-scroll-hidden">
-          <div
-            style={{ padding: "5px 0px" }}
-            className="flex-column h-scroll-hidden"
-          >
-            <span className="fontSizeMS font-size-ms text-ellipsis" style={{ paddingLeft: "5px" }}>
-              {item.title}
-            </span>
-            <span className="fontSizeMS font-size-ms text-ellipsis secondary-text" style={{ paddingLeft: "5px" }}>
-              {item.areapathshort}
-            </span>
-          </div>
-        </div>
-      </ListItem>
-    );
-  };
+  // private itemProvider = new ObservableValue<ArrayItemProvider<IPipelineItem>>(
+  //   // let a = (await UserResponeItems)
+  //   new ArrayItemProvider(UserResponeItems)
+  // );
+
+  // private sortingBehavior = new ColumnSorting<Partial<IPipelineItem>>(
+  //   (columnIndex: number, proposedSortOrder: SortOrder) => {
+  //     this.itemProvider.value = new ArrayItemProvider(
+  //       sortItems(
+  //         columnIndex,
+  //         proposedSortOrder,
+  //         this.sortFunctions,
+  //         this.columns,
+  //         UserResponeItems
+  //       )
+  //     );
+  //   }
+  // );
+
+//   private sortFunctions = [
+//     // Sort on Name column
+//     (item1: IPipelineItem, item2: IPipelineItem) => {
+//       return item1.title.localeCompare(item2.title!);
+//     }
+//   ];
+// }
+}
+function renderNameColumn(
+  rowIndex: number,
+  columnIndex: number,
+  tableColumn: ITableColumn<IPipelineItem>,
+  tableItem: IPipelineItem
+): JSX.Element {
+  return (
+    <SimpleTableCell
+      columnIndex={columnIndex}
+      tableColumn={tableColumn}
+      key={"col-" + columnIndex}
+      contentClassName="fontWeightSemiBold font-weight-semibold fontSizeM font-size-m scroll-hidden"
+    >
+      <Status
+        {...getStatusIndicatorData(tableItem.status).statusProps}
+        className="icon-large-margin"
+        size={StatusSize.l}
+      />
+      <div className="flex-row scroll-hidden">
+        <Tooltip overflowOnly={true}>
+          <span className="text-ellipsis">{tableItem.title}</span>
+        </Tooltip>
+      </div>
+    </SimpleTableCell>
+  );
+  
 }
 
-export default StoryLinkComponent;
+export default QuickSteps;
 
-showRootComponent(<StoryLinkComponent />);
+showRootComponent(<QuickSteps/>);
 
