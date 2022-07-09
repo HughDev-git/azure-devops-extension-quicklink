@@ -105,19 +105,27 @@ async function RetrieveResponses(){
         WorkItemTrackingServiceIds.WorkItemFormService
       )
         let responses = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses")).toString();
+        let responses2 = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses"));
+        console.log("RESPONSE 1 :  " + responses)
+        console.log("RESPONSE 2 :  " + responses2)
+        //let cleanedResponse = responses.replace( /(<([^>]+)>)/ig, '');
         return responses
     }
 async function ParseResponses(){
   const data = await RetrieveResponses()
+  console.log("RESPONSE 3 :   " + data)
   return data
 }
 
 async function MergeSchemaAndResults(results: Promise<string>){
+    console.log("RESPONSE 4 :   " + results)
     let stepsplaceholder = new Array<IPipelineItem<{}>>();
     const responses = (await results)
+    console.log("RESPONSE 5 :   " + responses)
     const schema = (await ADOSchema)
-    var parsedRespones = JSON.parse(responses)
-    for (let entry of parsedRespones.items) {
+    var parsedResponse = JSON.parse(responses)
+    console.log("RESPONSE 6 :   " + parsedResponse)
+    for (let entry of parsedResponse.items) {
         // let AreaPath = new String(entry.fields["System.AreaPath"])
         // let cleanedAreaPath = AreaPath.split("\\")[1]
         stepsplaceholder.push({
