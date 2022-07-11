@@ -105,26 +105,30 @@ async function RetrieveResponses(){
         WorkItemTrackingServiceIds.WorkItemFormService
       )
         let responses = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses")).toString();
-        let responses2 = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses"));
-        console.log("RESPONSE 1 :  " + responses)
-        console.log("RESPONSE 2 :  " + responses2)
+        //let responses2 = (await workItemFormService.getFieldValue("Custom.MSQuickStepResponses"));
+        //console.log("RESPONSE 1 :  " + responses)
+        //console.log("RESPONSE 2 :  " + responses2)
         //let cleanedResponse = responses.replace( /(<([^>]+)>)/ig, '');
         return responses
     }
 async function ParseResponses(){
   const data = await RetrieveResponses()
-  console.log("RESPONSE 3 :   " + data)
+  // console.log("RESPONSE 3 :   " + data)
   return data
 }
 
 async function MergeSchemaAndResults(results: Promise<string>){
-    console.log("RESPONSE 4 :   " + results)
+    // console.log("RESPONSE 4 :   " + results)
     let stepsplaceholder = new Array<IPipelineItem<{}>>();
     const responses = (await results)
-    console.log("RESPONSE 5 :   " + responses)
+    //first clean for html tag removal
+    const cleanedResponses = responses.replace(/(<([^>]+)>)/ig, ""); 
+    //second clean for reinsert of quotes
+    const cleanedResponses2 = cleanedResponses.replace(/&quot;/g, '"'); 
+    // console.log("CLEANED RESPONSE 5 :   " + cleanedResponses2)
     const schema = (await ADOSchema)
-    var parsedResponse = JSON.parse(responses)
-    console.log("RESPONSE 6 :   " + parsedResponse)
+    var parsedResponse = JSON.parse(cleanedResponses2)
+    // console.log("RESPONSE 6 :   " + parsedResponse)
     for (let entry of parsedResponse.items) {
         // let AreaPath = new String(entry.fields["System.AreaPath"])
         // let cleanedAreaPath = AreaPath.split("\\")[1]
@@ -139,9 +143,9 @@ return stepsplaceholder
 }
 
 function returnMatchedSchemaRecord(item: any){
-  console.log("First Log"+item)
+  // console.log("First Log"+item)
   let a = schemaItems.find((i: { step: string; }) => i.step === item)
-  console.log("Second Log"+a)
+  // console.log("Second Log"+a)
   return a
 }
 

@@ -26,7 +26,7 @@ export const schemaItems = [
   },
   {
     step: "6",
-    title: "@ mention CSAM in Comments upon completion",
+    title: "Mention CSAM in Comments upon completion",
     type: "internal"
   }
 ];

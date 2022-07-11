@@ -25,14 +25,21 @@ import { ArrayItemProvider } from "azure-devops-ui/Utilities/Provider";
 import { ObservableValue } from "azure-devops-ui/Core/Observable";
 import { showRootComponent } from "../../Common";
 import * as SDK from "azure-devops-extension-sdk";
+import {
+  IWorkItemFormService,
+  WorkItemTrackingServiceIds,
+} from "azure-devops-extension-api/WorkItemTracking";
+
 
 
 interface MyStates {
   StepRecordsItemProvider: ArrayItemProvider<IPipelineItem>;
   isCoachMarkVisible: boolean;
-  percentComplete: number;
+  percentComplete: any;
   totalSteps: number;
   completedSteps: number;
+  nextStep: number;
+  nextStepText: string;
   isRenderReady: boolean;
 }
 
@@ -44,6 +51,8 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       isCoachMarkVisible: false,
       totalSteps: 0,
       completedSteps: 0,
+      nextStep: 0,
+      nextStepText: "",
       percentComplete: 0,
       isRenderReady: false
     };
@@ -70,7 +79,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         <ProgressIndicator
           label={
             "My Progress | " +
-            parseInt(this.state.percentComplete.toFixed(1)) * 100 +
+            this.state.percentComplete.toFixed(1) * 100 +
             " %"
           }
           // description={this.state.percentComplete + " %"}
@@ -125,10 +134,15 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     });
   }
   public async updateStatus(e: ITableRow<Partial<IPipelineItem>>) {
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService
+    )
     //alert(pipelineItems[e.index].step);
     //If it is the first step selected and not complete, mark complete
     let responses = (await UserResponeItems)
-    this.setMarks(e, responses);
+    let shouldUpdateFields = this.setMarks(e, responses);
+    this.determineIfAwaitExternalProcess(e, responses);
+    this.setRemainingADOFields(e, responses)
     // console.log(UserResponeItems.length);
     let stepsplaceholder = new Array<IPipelineItem<{}>>();
     for (let entry of responses) {
@@ -140,6 +154,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         status: entry.status,
         type: entry.type
       });
+      //console.log(JSON.stringify(this.state.StepRecordsItemProvider))
       // let total = stepsplaceholder.length;
       // let completed = stepsplaceholder.filter((a) => a.status === "success")
       // .length;
@@ -151,61 +166,105 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       });
       // alert(e.index);
     }
+    let stringifiedJSON = JSON.stringify(this.state.StepRecordsItemProvider);
+    workItemFormService.setFieldValues({"Custom.MSQuickStepResponses": stringifiedJSON});
   }
-  public updatePercentComplete() {
-    let percentCompleted = this.state.completedSteps / this.state.totalSteps;
-    console.log("Percent Complete:  " + percentCompleted);
-    this.setState({
-      percentComplete: percentCompleted
-      // StoryRecordsArray: storiesplaceholder
-    });
-  }
-  public setMarks(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
-    if (responses[e.index].status !== "success") {
-      //determine if frst
+  // public updatePercentComplete() {
+  //   let percentCompleted = this.state.completedSteps / this.state.totalSteps;
+  //   //console.log("Percent Complete:  " + percentCompleted);
+  //   this.setState({
+  //     percentComplete: percentCompleted
+  //     // StoryRecordsArray: storiesplaceholder
+  //   });
+  // }
+  public async setRemainingADOFields(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService)
+      //if First
       if (e.index === 0) {
-        responses[e.index].status = "success";
-      }
-      if (e.index !== 0 && responses[e.index - 1].status === "success") {
-        responses[e.index].status = "success";
-      }
-    } else {
-      for (let entry of responses) {
-        if (entry.step >= responses[e.index].step) {
-          entry.status = "queued";
+        if (responses[0].status === "success") {
+          this.setState({
+            nextStepText: responses[1].title,
+            nextStep: responses[1].step
+          });
+        } else {
+          this.setState({
+            nextStepText: responses[0].title,
+            nextStep: responses[0].step
+          });
         }
       }
-    }
+      workItemFormService.setFieldValues({"Custom.MSQuickStepPercentComplete": this.state.percentComplete,"Custom.MSQuickStepNextStepID":this.state.nextStep, "Custom.MSQuickStepNextStepText": this.state.nextStepText});
+  }
+
+  public async determineIfAwaitExternalProcess(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
+      const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService)
+    if (responses.length > e.index + 1) {
+      if (responses[e.index + 1].type === "external" && responses[e.index].status === "success") {
+        workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
+      } else {
+        workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": false});
+      }
+  }
+}
+  public async setMarks(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
+    //SET MARKS NEW START
+    //Determine if we can mark step as success
+    if(responses[e.index].status !== "success") {
+      //Can return as this item should not be marked as success since the previous item is not success
+      if(e.index != 0 && responses[e.index - 1].status !== "success") {
+      } 
+      //Can mark as success since first item
+      if(e.index === 0){
+        responses[e.index].status = "success";
+      }
+      //Can mark as success since previous item is success
+      if(e.index != 0 && responses[e.index - 1].status === "success")
+      responses[e.index].status = "success";
+      return true
+      }
+      if (responses[e.index].status === "success") {
+          for (let entry of responses) {
+          if (entry.step >= responses[e.index].step) {
+            entry.status = "queued";
+          }
+          if (entry.step == responses[e.index].step && entry.type == "external") {
+            entry.status = "running";
+          }
+          // if (entry.step == responses[e.index].step + 1) {
+          //   entry.status = "running";
+          // }
+        }
+      }
+    //SET MARKS NEW END
+    //Prep states
     let total = responses.length;
-    let completed = responses.filter((a) => a.status === "success")
-      .length;
+    let completed = responses.filter((a) => a.status === "success").length;
+    let nextStep = e.index + 2;
+    //Account for no next item
+    if (responses.length < nextStep) {
+      this.setState({
+        nextStepText: "No Next Step",
+      });
+    } else {
+      this.setState({
+        nextStepText: responses[nextStep - 1].title,
+      });
+    }
+    let percentComplete = completed / total;
     this.setState({
+      nextStep: nextStep,
       totalSteps: total,
       completedSteps: completed,
-      percentComplete: completed / total
+      percentComplete: percentComplete
     });
-    console.log("Total Steps:  " + total);
-    console.log("Completed Steps:  " + completed);
-    // for (let entry of pipelineItems) {
-    //   if (entry.step >= pipelineItems[e.index].step) {
-    //     if (
-    //       entry.type === "external" &&
-    //       pipelineItems[e.index - 1].status === "success"
-    //     ) {
-    //       entry.status = "running";
-    //     } else {
-    //       entry.status = "queued";
-    //     }
-    //     // entry.status = "queued";
-    //   }
-    // }
-    //do a check to see if this is the last item in array
+    //Account for next item being external
     if (responses.length > e.index + 1) {
       if (
         responses[e.index + 1].type === "external" &&
         responses[e.index].status === "success"
       ) {
-        // alert("set running");
         responses[e.index + 1].status = "running";
         this.setState({
           isCoachMarkVisible: true
@@ -214,15 +273,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         setTimeout(this.onDismissCoach.bind(this), 20000);
       }
     }
-    // do a check if we ever click an item that is external
-    // if (
-    //   pipelineItems[e.index].type === "external" &&
-    //   pipelineItems[e.index].status === "success"
-    // ) {
-    //   pipelineItems[e.index].status = "running";
-    // }
   }
-
   public async fetchAllJSONData() {
      let stepsplaceholder = new Array<IPipelineItem<{}>>();
     const responses = (await UserResponeItems);
