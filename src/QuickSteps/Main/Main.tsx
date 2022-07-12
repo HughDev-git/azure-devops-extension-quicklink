@@ -211,6 +211,8 @@ export class QuickSteps extends React.Component<{}, MyStates> {
   public async setMarks(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
     //SET MARKS NEW START
     //let previousItemStatus = responses[e.index - 1].status ?? ""
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService)
     let selectedItemStatus = e.data.status
     if(selectedItemStatus !== "success") {
       //Can mark as success since first item
@@ -222,17 +224,23 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         return
       }
       //Can mark as success since previous item is success
-      if(e.index != 0 && responses[e.index - 1].status === "success")
-      responses[e.index].status = "success";
-      this.prepStates(e, responses)
+      if(e.index != 0 && responses[e.index - 1].status === "success"){
+        responses[e.index].status = "success";
+        this.prepStates(e, responses)
+      if(responses[e.index + 1].type === "external"){
+        responses[e.index + 1].status = "running";
+      }
       this.checkIfNextItemIsExternal(e, responses)
       return
       }
+    }
     if (selectedItemStatus === "success") {
       console.log("Entered success if")
       //First check if the item being removed from success is an external action so we can set back to running
       if (responses[e.index].type === "external"){
-        responses[e.index].status = "running";
+        //responses[e.index].status = "running";
+        this.checkIfCurrentItemIsExternal(e, responses)
+        return
       } else {
         responses[e.index].status = "queued";
       }
@@ -246,7 +254,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         // }
        }
        this.prepStates(e, responses)
-       this.checkIfNextItemIsExternal(e, responses)
+       //this.checkIfNextItemIsExternal(e, responses)
       }
     // //SET MARKS NEW END
     //Account for next item being external
@@ -289,10 +297,27 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         });
   }
 
+  public async checkIfCurrentItemIsExternal(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
+    const workItemFormService = await SDK.getService<IWorkItemFormService>(
+      WorkItemTrackingServiceIds.WorkItemFormService)
+    if (responses[e.index].type === "external") {
+        //console.log("Setting next item as running")
+        responses[e.index].status = "running";
+    }
+    workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
+    this.setState({
+      isCoachMarkVisible: true
+      // StoryRecordsArray: storiesplaceholder
+    });
+    setTimeout(this.onDismissCoach.bind(this), 20000);
+  }
+
+
   public async checkIfNextItemIsExternal(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService)
     if (responses[e.index + 1].type === "external") {
+        //console.log("Setting next item as running")
         responses[e.index + 1].status = "running";
   }
     if (responses.length > e.index + 1) {
