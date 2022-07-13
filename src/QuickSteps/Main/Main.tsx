@@ -211,8 +211,8 @@ export class QuickSteps extends React.Component<{}, MyStates> {
   public async setMarks(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
     //SET MARKS NEW START
     //let previousItemStatus = responses[e.index - 1].status ?? ""
-    const workItemFormService = await SDK.getService<IWorkItemFormService>(
-      WorkItemTrackingServiceIds.WorkItemFormService)
+    // const workItemFormService = await SDK.getService<IWorkItemFormService>(
+    //   WorkItemTrackingServiceIds.WorkItemFormService)
     let selectedItemStatus = e.data.status
     if(selectedItemStatus !== "success") {
       //Can mark as success since first item
@@ -238,11 +238,22 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       console.log("Entered success if")
       //First check if the item being removed from success is an external action so we can set back to running
       if (responses[e.index].type === "external"){
-        //responses[e.index].status = "running";
+        responses[e.index].status = "running";
         this.checkIfCurrentItemIsExternal(e, responses)
+        this.prepStates(e, responses)
+        for (let entry of responses) {
+          if (entry.step > responses[e.index].step) {
+            entry.status = "queued";
+          }
+          // if (entry.step == responses[e.index].step + 1) {
+          //   entry.status = "running";
+          // }
+         }
         return
       } else {
         responses[e.index].status = "queued";
+        this.prepStates(e, responses)
+        this.checkIfCurrentItemIsExternal(e, responses);
       }
       //We now need to go and set forward items to que status
         for (let entry of responses) {
@@ -277,17 +288,26 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         //Prep states
         let total = responses.length;
         let completed = responses.filter((a) => a.status === "success").length;
-        let nextStep = e.index + 2;
+        let nextStep = (e.data.status === "running") ? e.index + 2:e.index + 2;
+        //let nextStep = e.index + 2;
         //Account for no next item
         if (responses.length < nextStep) {
           this.setState({
             nextStepText: "No Next Step",
           });
-        } else {
-          this.setState({
-            nextStepText: responses[nextStep - 1].title,
-          });
+        // } else {
+        //   this.setState({
+        //     nextStepText: responses[nextStep - 1].title,
+        //   });
         }
+        (e.data.type === "running") ? 
+        this.setState({
+           nextStepText: responses[nextStep - 1].title,
+         })
+         :
+         this.setState({
+           nextStepText: responses[nextStep - 1].title,
+         });
         let percentComplete = completed / total;
         this.setState({
           nextStep: nextStep,
@@ -303,8 +323,8 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     if (responses[e.index].type === "external") {
         //console.log("Setting next item as running")
         responses[e.index].status = "running";
+        workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
     }
-    workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
     this.setState({
       isCoachMarkVisible: true
       // StoryRecordsArray: storiesplaceholder
