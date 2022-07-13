@@ -29,8 +29,13 @@ import {
   IWorkItemFormService,
   WorkItemTrackingServiceIds,
 } from "azure-devops-extension-api/WorkItemTracking";
+import { Link } from "azure-devops-ui/Link";
+import { initializeIcons } from '@fluentui/font-icons-mdl2';
+import { Icon } from '@fluentui/react/lib/Icon';
+import "./quicksteps.scss";
 
 
+initializeIcons();
 
 interface MyStates {
   StepRecordsItemProvider: ArrayItemProvider<IPipelineItem>;
@@ -61,6 +66,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
   public componentDidMount() {
     SDK.init().then(() => {
     this.fetchAllJSONData().then(() => {
+      this.determinePercentComplete()
       this.isRenderReady();
       })
     })
@@ -75,13 +81,15 @@ export class QuickSteps extends React.Component<{}, MyStates> {
   public render(): JSX.Element {
     if (this.state.isRenderReady){
     return (
-      <div>
+      <div className="MainDiv">
+        <Icon iconName="FileSymlink" /> <Link href="https://www.microsoft.com/" subtle={true} className="instructions-class">
+           Go To Instructions
+        </Link>
         <ProgressIndicator
           label={
             "My Progress | " +
             this.state.percentComplete.toFixed(1) * 100 +
-            " %"
-          }
+            " %"}
           // description={this.state.percentComplete + " %"}
           percentComplete={this.state.percentComplete}
         />
@@ -107,7 +115,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
             // onActivate={(event, row) =>
           />
         </Card>
-        <div style={{ marginTop: "10px" }}>
+        <div style={{ marginTop: "10px"}}>
           {this.state.isCoachMarkVisible ? (
             <MessageCard
               //className="flex-self-stretch"
@@ -180,19 +188,18 @@ export class QuickSteps extends React.Component<{}, MyStates> {
   public async setRemainingADOFields(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
     const workItemFormService = await SDK.getService<IWorkItemFormService>(
       WorkItemTrackingServiceIds.WorkItemFormService)
-      //if First
-      if (e.index === 0) {
-        if (responses[0].status === "success") {
-          this.setState({
-            nextStepText: responses[1].title,
-            nextStep: responses[1].step
-          });
-        } else {
-          this.setState({
-            nextStepText: responses[0].title,
-            nextStep: responses[0].step
-          });
-        }
+      //Is pending external
+      let isPendingExernalAction = (await workItemFormService.getFieldValue("Custom.MSQuickStepIsAwaitingExternalAction")).toString();
+      console.log(isPendingExernalAction)
+      //determine what our state should be
+      if (this.state.percentComplete == 1){
+        workItemFormService.setFieldValues({"System.State": "Yes - I fully meet this requirement"});
+      }
+      if (this.state.percentComplete !== 1 && isPendingExernalAction === "true"){
+        workItemFormService.setFieldValues({"System.State": "Standby - I am waiting on external processes"});
+      } 
+      if (this.state.percentComplete !== 1 && isPendingExernalAction === "false"){
+        workItemFormService.setFieldValues({"System.State": "No - I do not meet this requirement"});
       }
       workItemFormService.setFieldValues({"Custom.MSQuickStepPercentComplete": this.state.percentComplete,"Custom.MSQuickStepNextStepID":this.state.nextStep, "Custom.MSQuickStepNextStepText": this.state.nextStepText});
   }
@@ -233,6 +240,16 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       this.checkIfNextItemIsExternal(e, responses)
       return
       }
+
+      if(e.data.type === "external"){
+        responses[e.index].status = "success";
+        this.prepStates(e, responses)
+      if(responses[e.index + 1].type === "external"){
+        responses[e.index + 1].status = "running";
+      }
+      this.checkIfNextItemIsExternal(e, responses)
+      return
+      }
     }
     if (selectedItemStatus === "success") {
       console.log("Entered success if")
@@ -240,7 +257,6 @@ export class QuickSteps extends React.Component<{}, MyStates> {
       if (responses[e.index].type === "external"){
         responses[e.index].status = "running";
         this.checkIfCurrentItemIsExternal(e, responses)
-        this.prepStates(e, responses)
         for (let entry of responses) {
           if (entry.step > responses[e.index].step) {
             entry.status = "queued";
@@ -249,6 +265,7 @@ export class QuickSteps extends React.Component<{}, MyStates> {
           //   entry.status = "running";
           // }
          }
+         this.prepStates(e, responses)
         return
       } else {
         responses[e.index].status = "queued";
@@ -283,38 +300,60 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     //   }
     // }
   }
-
+  public async determinePercentComplete(){
+    const responses = (await UserResponeItems);
+    let total = responses.length;
+    let completed = responses.filter((a) => a.status === "success").length;
+    let percentComplete = completed / total;
+    this.setState({
+      percentComplete: percentComplete
+    });
+  }
   public prepStates(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]) {
         //Prep states
         let total = responses.length;
         let completed = responses.filter((a) => a.status === "success").length;
-        let nextStep = (e.data.status === "running") ? e.index + 2:e.index + 2;
+        // let nextStep = (e.data.type === "external" && e.data.status === "success") ? e.index + 1:e.index + 2;
+        let nextStep = this.determineNextStep(e, responses) || 0
         //let nextStep = e.index + 2;
         //Account for no next item
         if (responses.length < nextStep) {
           this.setState({
             nextStepText: "No Next Step",
           });
+        
         // } else {
         //   this.setState({
         //     nextStepText: responses[nextStep - 1].title,
         //   });
+        } else {
+          this.setState({
+            nextStepText: responses[nextStep - 1].title,
+          });
         }
-        (e.data.type === "running") ? 
-        this.setState({
-           nextStepText: responses[nextStep - 1].title,
-         })
-         :
-         this.setState({
-           nextStepText: responses[nextStep - 1].title,
-         });
         let percentComplete = completed / total;
+        console.log("Total: "+ total +" ||||| "+ "Completed: "+ completed)
         this.setState({
           nextStep: nextStep,
           totalSteps: total,
           completedSteps: completed,
           percentComplete: percentComplete
         });
+  }
+
+  public determineNextStep(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
+    if(e.data.type === "external" && e.data.status === "success"){
+      return e.index + 1
+    }
+    if(e.data.type === "external" && e.data.status === "running"){
+      return e.index + 2
+    }
+    if(e.data.type !== "external" && e.data.status === "success"){
+      return e.index + 1
+    }
+    if(e.data.type !== "external" && e.data.status === "queued"){
+      return e.index + 2
+    }
   }
 
   public async checkIfCurrentItemIsExternal(e: ITableRow<Partial<IPipelineItem<{}>>>, responses: IPipelineItem<{}>[]){
@@ -324,12 +363,12 @@ export class QuickSteps extends React.Component<{}, MyStates> {
         //console.log("Setting next item as running")
         responses[e.index].status = "running";
         workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
+        this.setState({
+          isCoachMarkVisible: true
+          // StoryRecordsArray: storiesplaceholder
+        });
+        setTimeout(this.onDismissCoach.bind(this), 20000);
     }
-    this.setState({
-      isCoachMarkVisible: true
-      // StoryRecordsArray: storiesplaceholder
-    });
-    setTimeout(this.onDismissCoach.bind(this), 20000);
   }
 
 
@@ -343,14 +382,14 @@ export class QuickSteps extends React.Component<{}, MyStates> {
     if (responses.length > e.index + 1) {
       if (responses[e.index + 1].type === "external" && responses[e.index].status === "success") {
         workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": true});
+        this.setState({
+          isCoachMarkVisible: true
+          // StoryRecordsArray: storiesplaceholder
+        });
+        setTimeout(this.onDismissCoach.bind(this), 20000);
       } else {
         workItemFormService.setFieldValues({"Custom.MSQuickStepIsAwaitingExternalAction": false});
       }
-    this.setState({
-      isCoachMarkVisible: true
-      // StoryRecordsArray: storiesplaceholder
-    });
-    setTimeout(this.onDismissCoach.bind(this), 20000);
   }
 }
 
