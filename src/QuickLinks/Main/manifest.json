@@ -1,0 +1,30 @@
+{
+    "contributions": [
+        {
+            "id": "jarhughe.quicklinks.quicklink-work-item-form-group",
+            "type": "ms.vss-work-web.work-item-form-control",
+            "description": "Custom work item form group",
+            "targets": [
+                "ms.vss-work-web.work-item-form"
+            ],
+            "properties": {
+                "name": "Microsoft Quicklinks",
+                "uri": "dist/Main/index.html",
+                "height": 300,
+                "inputs": [
+                    {
+                        "id": "QueryName",
+                        "name": "Add the query path for the work items you want presented into quick links. Example: Shared Queries/Extension Queries - DO NOT MODIFY/All Active Customer Stories. NOTE: The API only supports a maximum of 200 records in a query!",
+                        "validation": {
+                            "dataType": "String",
+                            "isRequired": true
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "scopes": [
+        "vso.work"
+    ]
+}
