@@ -1,10 +1,10 @@
 {
     "manifestVersion": 1,
-    "id": "quickassign",
+    "id": "quicklink",
     "publisher": "jarhughe",
-    "version": "1.0.0",
-    "name": "Microsoft QuickASsign",
-    "description": "Azure DevOps Extension to simplify the process of assigning the Onboarding Activity work item type",
+    "version": "1.0.1",
+    "name": "Microsoft QuickLinks",
+    "description": "Azure DevOps Extension to simplify the process of linking work items",
     "targets": [
         {
             "id": "Microsoft.VisualStudio.Services"
