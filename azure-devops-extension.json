@@ -2,7 +2,7 @@
     "manifestVersion": 1,
     "id": "quicklink",
     "publisher": "jarhughe",
-    "version": "1.0.1",
+    "version": "1.0.225",
     "name": "Microsoft QuickLinks",
     "description": "Azure DevOps Extension to simplify the process of linking work items",
     "targets": [
